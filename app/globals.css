@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+body {
+  background: #f0f2f5;
+  color: #000000;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Helps the browser manage scrolling during content updates */
+.overflow-y-auto {
+  scroll-behavior: smooth;
+  overflow-anchor: auto !important;
+}
+
+/* Professional scrollbar for a pro look */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.markdown-content p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-content p {
+  margin-bottom: 0.5rem;
+}
