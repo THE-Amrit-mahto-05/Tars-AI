@@ -9,8 +9,9 @@ import { Sidebar } from "@/components/Sidebar";
 import { ChatWindow } from "@/components/ChatWindow";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Id } from "@/convex/_generated/dataModel";
+import { Suspense } from "react";
 
-export default function Home() {
+function HomeContent() {
   const { isAuthenticated, isLoading } = useConvexAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -133,5 +134,17 @@ export default function Home() {
         </div>
       </Show>
     </main>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-screen items-center justify-center themed-bg">
+        <Loader2 className="h-10 w-10 animate-spin" style={{ color: 'var(--accent)' }} />
+      </div>
+    }>
+      <HomeContent />
+    </Suspense>
   );
 }
