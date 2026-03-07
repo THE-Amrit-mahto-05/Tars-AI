@@ -191,13 +191,15 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
           clearInterval(displayLoop);
         }
 
-        if (aiText) {
-          await sendAI({ body: aiText, conversationId });
-        }
-
-        await setTyping({ conversationId, isTyping: false });
+        const finalAiText = aiText;
         setIsAiGenerating(false);
         setStreamingAIText("");
+        await setTyping({ conversationId, isTyping: false });
+
+        if (finalAiText) {
+          await sendAI({ body: finalAiText, conversationId });
+        }
+
         abortControllerRef.current = null;
         setTimeout(() => inputRef.current?.focus(), 0);
       } catch (error: any) {
@@ -545,9 +547,14 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
                 <div className="relative shrink-0">
                   <img src={otherUser?.image ?? "https://cdn-icons-png.flaticon.com/512/166/166258.png"} className="h-8 w-8 rounded-full border themed-border" alt="AI Agent" />
                 </div>
-                <div className="rounded-2xl rounded-tl-sm border themed-border px-4 py-3 shadow-sm themed-bg">
+                <div className="rounded-2xl rounded-tl-sm border themed-border px-4 py-2.5 shadow-sm themed-bg message-bubble-other"
+                  style={{
+                    backgroundColor: 'var(--bubble-other)',
+                    color: 'var(--bubble-other-text)',
+                  }}
+                >
                   {streamingAIText ? (
-                    <div className="text-[15px] leading-relaxed break-words markdown-content themed-text">
+                    <div className="text-[15px] leading-relaxed break-words pr-10 markdown-content themed-text">
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
                         {streamingAIText}
                       </ReactMarkdown>
