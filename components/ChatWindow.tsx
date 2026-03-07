@@ -10,6 +10,7 @@ import { format, isToday, isYesterday, isThisYear } from "date-fns";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useRouter } from "next/navigation";
+import { useTheme } from "./ThemeProvider";
 
 const PRESET_ICONS = [
   "https://api.dicebear.com/7.x/shapes/svg?seed=1",
@@ -30,14 +31,15 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
   const [showGroupInfo, setShowGroupInfo] = useState(false);
   const [showDeleteMenu, setShowDeleteMenu] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [showConfirmLeave, setShowConfirmLeave] = useState(false);
   const [showConfirmClear, setShowConfirmClear] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  const me = useQuery(api.users.getMe);
   const details = useQuery(api.conversations.getChatDetails, { conversationId });
+  const { theme } = useTheme();
   const messages = useQuery(api.messages.list, { conversationId });
   const sendMessage = useMutation(api.messages.send);
   const sendAI = useMutation(api.messages.sendAIResponse);
@@ -149,7 +151,7 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
         }
 
         const contextMessages = messages?.slice(-3).map(m => ({
-          role: m.isMe ? "user" : "assistant",
+          role: m.authorId === me?._id ? "user" : "assistant",
           content: m.body
         })) || [];
 
@@ -251,7 +253,6 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
 
   const formatMessageTimestamp = (ts: number) => format(new Date(ts), "h:mm a");
 
-
   const formatDateLabel = (ts: number) => {
     const date = new Date(ts);
     if (isToday(date)) return "Today";
@@ -275,8 +276,8 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
 
   if (details === undefined || messages === undefined) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-[#f0f2f5] text-[#3390ec]">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="flex-1 flex items-center justify-center themed-bg themed-text">
+        <Loader2 className="h-8 w-8 animate-spin" style={{ color: 'var(--accent)' }} />
       </div>
     );
   }
@@ -284,49 +285,41 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
   if (details === null) {
     router.push("/");
     return (
-      <div className="flex-1 flex items-center justify-center bg-[#f0f2f5] text-[#3390ec]">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="flex-1 flex items-center justify-center themed-bg themed-text">
+        <Loader2 className="h-8 w-8 animate-spin" style={{ color: 'var(--accent)' }} />
       </div>
     );
   }
 
-  const { otherUser } = details;
+  const otherUser = details.otherUser;
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#f6f8fa] relative overflow-hidden">
-      <div className="absolute inset-0 opacity-[0.08] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]" />
+    <div className="flex-1 flex flex-col h-full overflow-hidden transition-colors duration-200 themed-chat-bg relative">
+      <div className="absolute inset-0 opacity-[0.05] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] z-0" />
 
-      <header className="h-14 md:h-16 border-b border-[#e4e4e7] bg-white px-4 md:px-6 flex items-center justify-between z-20 shadow-sm shrink-0">
-        <div
-          className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 px-2 py-1 rounded-lg transition-colors"
-          onClick={() => details.conversation.isGroup && setShowGroupInfo(true)}
-        >
-          <div className="relative">
+      {/* Header */}
+      <div className="h-[60px] px-6 flex items-center justify-between border-b shadow-sm transition-colors duration-200 themed-bg themed-border z-10">
+        <div className="flex items-center gap-3 overflow-hidden">
+          <div className="relative cursor-pointer hover:opacity-90 transition-opacity" onClick={() => details?.conversation.isGroup && setShowGroupInfo(true)}>
             <img
-              src={details.conversation.isGroup ? (details.groupDetails?.icon ?? "https://cdn-icons-png.flaticon.com/512/166/166258.png") : (otherUser?.image ?? "https://cdn-icons-png.flaticon.com/512/166/166258.png")}
-              alt={details.conversation.isGroup ? details.groupDetails?.name : otherUser?.name}
-              className="h-10 w-10 md:h-11 md:w-11 rounded-full object-cover border border-gray-100"
+              src={details?.conversation.isGroup
+                ? (details?.conversation.icon || "https://cdn-icons-png.flaticon.com/512/166/166258.png")
+                : details?.otherUser?.image}
+              className="h-10 w-10 rounded-full object-cover border border-black/5"
+              alt="Avatar"
             />
-            {isAiGenerating && (
-              <div className="absolute -top-1 -right-1">
-                <Sparkles className="h-4 w-4 text-[#3390ec] animate-pulse drop-shadow-[0_0_8px_rgba(51,144,236,0.8)]" />
-              </div>
+            {!details?.conversation.isGroup && details?.otherUser?.isOnline && (
+              <div className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 themed-border" style={{ backgroundColor: 'var(--accent)' }} />
             )}
           </div>
-          <div className="ml-1">
-            <h2 className="text-[15px] md:text-[16px] font-medium text-black leading-tight">
-              {details.conversation.isGroup ? details.groupDetails?.name : otherUser?.name}
-            </h2>
-            <p className="text-[13px] text-[#3390ec] font-normal">
-              {details.conversation.isGroup ? (
-                `${details.groupDetails?.participantCount} members`
-              ) : details.conversation.typingUser === otherUser?._id ? (
-                <span className="animate-pulse">typing...</span>
-              ) : otherUser?.isOnline ? (
-                "online"
-              ) : (
-                formatLastSeen(otherUser?.lastSeen)
-              )}
+          <div className="flex flex-col text-left overflow-hidden">
+            <h3 className="text-[15px] font-bold truncate leading-tight transition-colors themed-text">
+              {details?.conversation.isGroup ? details?.conversation.name : details?.otherUser?.name}
+            </h3>
+            <p className="text-[12px] font-medium transition-colors themed-text-secondary">
+              {details?.conversation.isGroup
+                ? `${details?.groupDetails?.participantCount} members`
+                : details?.otherUser?.isOnline ? "online" : (details?.otherUser?.lastSeen ? formatLastSeen(details.otherUser.lastSeen) : "offline")}
             </p>
           </div>
         </div>
@@ -337,21 +330,20 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
           onMouseLeave={() => setShowDeleteMenu(false)}
         >
           <button
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-600"
-            title="Options"
+            className="p-2 hover:bg-black/5 rounded-full transition-colors themed-text-secondary"
           >
             <MoreVertical className="h-5 w-5" />
           </button>
 
           {showDeleteMenu && (
-            <div className="absolute top-full right-0 mt-1 bg-white border border-[#e4e4e7] shadow-xl rounded-xl py-1.5 w-48 z-[100] animate-in fade-in zoom-in duration-200">
+            <div className="absolute top-full right-0 mt-1 border shadow-xl rounded-xl py-1.5 w-48 z-[100] animate-in fade-in zoom-in duration-200 themed-bg themed-border">
               <button
                 onClick={() => {
                   setShowDeleteMenu(false);
                   setShowConfirmClear(true);
                 }}
                 disabled={isDeleting}
-                className="w-full px-4 py-2 text-left text-[14px] text-[#ef4444] hover:bg-[#fef2f2] flex items-center gap-3 transition-colors"
+                className="w-full px-4 py-2 text-left text-[14px] text-[#ef4444] hover:bg-[#ef4444]/10 flex items-center gap-3 transition-colors"
               >
                 <Trash2 className="h-4 w-4" />
                 {isDeleting ? "Clearing..." : "Clear Chat"}
@@ -359,7 +351,7 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
             </div>
           )}
         </div>
-      </header>
+      </div>
 
       <div
         ref={containerRef}
@@ -369,19 +361,19 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
         <div className="max-w-[1000px] mx-auto p-4 md:p-8 space-y-2">
           {messages?.length === 0 && !isAiGenerating && (
             <div className="flex flex-col items-center justify-center py-20 opacity-40">
-              <div className="bg-white p-6 rounded-full shadow-sm mb-4">
-                <Sparkles className="h-12 w-12 text-[#3390ec]" />
+              <div className="p-6 rounded-full shadow-sm mb-4 themed-bg">
+                <Sparkles className="h-12 w-12" style={{ color: 'var(--accent)' }} />
               </div>
-              <p className="text-lg font-medium text-black">No messages yet</p>
-              <p className="text-sm text-[#708499]">Send a message to start the conversation!</p>
+              <p className="text-lg font-medium themed-text">No messages yet</p>
+              <p className="text-sm themed-text-secondary">Send a message to start the conversation!</p>
             </div>
           )}
-          {messages?.map((msg, index) => {
-            const isMe = msg.isMe;
+          {messages?.map((msg: any, index: number) => {
             const prevMsg = messages[index - 1];
             const isSameAuthorAsPrev = prevMsg?.authorId === msg.authorId;
-            const isSystem = (msg as any).isSystem;
-            const isDeleted = (msg as any).isDeleted;
+            const isSystem = msg.isSystem;
+            const isMe = msg.authorId === me?._id;
+            const isDeleted = msg.isDeleted;
 
             if (isSystem) {
               const showDateDivider = !prevMsg || !isSameDay(prevMsg._creationTime, msg._creationTime);
@@ -389,13 +381,13 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
                 <React.Fragment key={msg._id}>
                   {showDateDivider && (
                     <div className="flex items-center justify-center my-4">
-                      <div className="bg-[#e2e8f0] text-[#708499] text-[11px] font-semibold px-4 py-1 rounded-full tracking-wide">
+                      <div className="bg-black/5 text-[11px] font-semibold px-4 py-1 rounded-full tracking-wide themed-text-secondary backdrop-blur-sm">
                         {formatDateLabel(msg._creationTime)}
                       </div>
                     </div>
                   )}
                   <div className="flex justify-center my-1 w-full">
-                    <div className="bg-gray-200/50 backdrop-blur-sm text-[#708499] text-[12px] px-4 py-1 rounded-full font-medium">
+                    <div className="bg-black/5 backdrop-blur-sm text-[12px] px-4 py-1 rounded-full font-medium themed-text-secondary">
                       {msg.body}
                     </div>
                   </div>
@@ -409,7 +401,7 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
               <React.Fragment key={msg._id}>
                 {showDateDivider && (
                   <div className="flex items-center justify-center my-4">
-                    <div className="bg-[#e2e8f0] text-[#708499] text-[11px] font-semibold px-4 py-1 rounded-full tracking-wide">
+                    <div className="bg-black/5 text-[11px] font-semibold px-4 py-1 rounded-full tracking-wide themed-text-secondary backdrop-blur-sm">
                       {formatDateLabel(msg._creationTime)}
                     </div>
                   </div>
@@ -417,25 +409,28 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
                 <div
                   className={`flex group w-full ${isMe ? "justify-end" : "justify-start"} ${!isSameAuthorAsPrev || showDateDivider ? "mt-4" : "mt-0.5"}`}
                 >
-                  {!isMe && !isDeleted && (
-                    <div className="w-8 shrink-0 mr-2 flex justify-end items-end opacity-0 group-hover:opacity-100 transition-opacity" />
+                  {!isMe && (
+                    <div className="w-8 shrink-0 mr-2 flex justify-end items-end transition-opacity" />
                   )}
 
-                  <div className={`relative max-w-[85%] sm:max-w-[70%] px-4 py-2.5 shadow-sm group
-                  ${isMe
-                      ? "bg-[#3390ec] text-white rounded-2xl rounded-tr-sm"
-                      : "bg-white text-black rounded-2xl rounded-tl-sm border border-gray-100 shadow-sm"
+                  <div className={`relative max-w-[85%] sm:max-w-[70%] px-4 py-2.5 shadow-sm group transition-all duration-200
+                    ${isMe
+                      ? "rounded-2xl rounded-tr-sm"
+                      : "rounded-2xl rounded-tl-sm border themed-border"
                     }
-                  ${isDeleted ? "bg-gray-50/50 border-dashed border-gray-200" : ""}
-                `}
+                    ${isDeleted ? "opacity-50 grayscale-[0.5]" : ""}
+                  `}
+                    style={{
+                      backgroundColor: isMe ? 'var(--bubble-me)' : 'var(--bubble-other)',
+                      color: isMe ? 'var(--bubble-me-text)' : 'var(--bubble-other-text)',
+                    }}
                   >
-                    {details.conversation.isGroup && !isMe && !isDeleted && (
-                      <p className="text-[11px] font-bold text-[#3390ec] mb-1">{msg.authorName}</p>
+                    {details?.conversation.isGroup && !isMe && (
+                      <p className="text-[11px] font-bold mb-1" style={{ color: 'var(--accent)' }}>{msg.authorName}</p>
                     )}
-                    <div className={`text-[15px] leading-relaxed break-words pr-10 markdown-content ${isDeleted ? "text-[#a0a5ab] italic" : ""}`}>
-                      {isDeleted && <span className="block text-[10px] uppercase tracking-wider font-bold mb-1 opacity-50">Deleted Message</span>}
+                    <div className={`text-[15px] leading-relaxed break-words pr-10 markdown-content ${isDeleted ? "italic opacity-70" : ""}`}>
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {msg.body}
+                        {isDeleted ? "This message was deleted" : msg.body}
                       </ReactMarkdown>
                     </div>
 
@@ -453,9 +448,9 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
                               key={emoji}
                               onClick={() => toggleReaction({ messageId: msg._id, emoji })}
                               className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] font-bold transition-all border
-                              ${hasReacted
-                                  ? "bg-[#3390ec]/10 border-[#3390ec]/30 text-[#3390ec]"
-                                  : "bg-gray-50 border-gray-100 text-gray-500 hover:border-gray-300"
+                            ${hasReacted
+                                  ? "bg-black/10 border-black/20 themed-text"
+                                  : "bg-black/5 border-transparent themed-text-secondary hover:border-black/10"
                                 }`}
                             >
                               <span>{emoji}</span>
@@ -468,22 +463,22 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
 
                     {!isDeleted && (
                       <div className={`absolute top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all
-                      ${isMe ? "-left-20" : "-right-16 md:-right-20"}
-                    `}>
+                        ${isMe ? "-left-20" : "-right-16 md:-right-20"}
+                      `}>
                         <div className="relative group/picker">
                           <button
-                            className="h-8 w-8 flex items-center justify-center rounded-full bg-white text-gray-400 hover:text-[#3390ec] hover:bg-[#f4f4f5] border border-[#e4e4e7] shadow-sm"
+                            className="h-8 w-8 flex items-center justify-center rounded-full border shadow-sm themed-bg themed-border themed-text-secondary hover:themed-text"
                             title="Add reaction"
                           >
                             <SmilePlus className="h-4 w-4" />
                           </button>
 
-                          <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-white border border-[#e4e4e7] shadow-xl rounded-full px-2 py-1.5 flex gap-1.5 scale-0 group-hover/picker:scale-100 transition-transform origin-bottom z-[100]">
+                          <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 border shadow-xl rounded-full px-2 py-1.5 flex gap-1.5 scale-0 group-hover/picker:scale-100 transition-transform origin-bottom z-[100] themed-bg themed-border">
                             {["👍", "❤️", "😂", "😮", "😢", "🔥"].map(emoji => (
                               <button
                                 key={emoji}
                                 onClick={() => toggleReaction({ messageId: msg._id, emoji })}
-                                className="hover:scale-125 transition-transform p-0.5"
+                                className="hover:scale-125 transition-transform p-0.5 text-lg"
                               >
                                 {emoji}
                               </button>
@@ -493,7 +488,7 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
 
                         <button
                           onClick={() => handleCopy(msg._id, msg.body)}
-                          className="h-8 w-8 flex items-center justify-center rounded-full bg-white text-gray-400 hover:text-[#3390ec] hover:bg-[#f4f4f5] border border-[#e4e4e7] shadow-sm transition-all"
+                          className="h-8 w-8 flex items-center justify-center rounded-full border shadow-sm transition-all themed-bg themed-border themed-text-secondary hover:themed-text"
                           title="Copy message"
                         >
                           {copiedId === msg._id ? (
@@ -506,7 +501,7 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
                         {isMe && (
                           <button
                             onClick={() => removeMessage({ messageId: msg._id })}
-                            className="h-8 w-8 flex items-center justify-center rounded-full bg-white text-[#ef4444] hover:bg-[#fef2f2] border border-[#e4e4e7] shadow-sm"
+                            className="h-8 w-8 flex items-center justify-center rounded-full border shadow-sm themed-bg themed-border text-[#ef4444] hover:bg-[#ef4444]/10"
                             title="Delete message"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -515,8 +510,7 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
                       </div>
                     )}
 
-                    <span className={`absolute bottom-1 right-2 text-[10px] select-none font-medium
-                    ${isMe ? "text-white/70" : "text-[#707579]"}`}
+                    <span className={`absolute bottom-1 right-2 text-[10px] select-none font-medium opacity-60`}
                     >
                       {formatMessageTimestamp(msg._creationTime)}
                     </span>
@@ -531,11 +525,11 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
             <div className="flex w-full justify-start mt-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
               <div className="flex gap-3 items-end max-w-[85%] sm:max-w-[70%]">
                 <div className="relative shrink-0">
-                  <img src={otherUser?.image ?? "https://cdn-icons-png.flaticon.com/512/166/166258.png"} className="h-8 w-8 rounded-full border border-gray-100" alt="AI Agent" />
+                  <img src={otherUser?.image ?? "https://cdn-icons-png.flaticon.com/512/166/166258.png"} className="h-8 w-8 rounded-full border themed-border" alt="AI Agent" />
                 </div>
-                <div className="bg-white text-black rounded-2xl rounded-tl-sm border border-gray-100 px-4 py-3 shadow-sm">
+                <div className="rounded-2xl rounded-tl-sm border themed-border px-4 py-3 shadow-sm themed-bg">
                   {streamingAIText ? (
-                    <div className="text-[15px] leading-relaxed break-words markdown-content">
+                    <div className="text-[15px] leading-relaxed break-words markdown-content themed-text">
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
                         {streamingAIText}
                       </ReactMarkdown>
@@ -543,11 +537,11 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
                   ) : (
                     <div className="flex items-center gap-2">
                       <div className="flex gap-1">
-                        <div className="w-2 h-2 bg-[#3390ec] rounded-full animate-bounce [animation-delay:-0.3s]" />
-                        <div className="w-2 h-2 bg-[#3390ec] rounded-full animate-bounce [animation-delay:-0.15s]" />
-                        <div className="w-2 h-2 bg-[#3390ec] rounded-full animate-bounce" />
+                        <div className="w-2 h-2 rounded-full animate-bounce [animation-delay:-0.3s]" style={{ backgroundColor: 'var(--accent)' }} />
+                        <div className="w-2 h-2 rounded-full animate-bounce [animation-delay:-0.15s]" style={{ backgroundColor: 'var(--accent)' }} />
+                        <div className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: 'var(--accent)' }} />
                       </div>
-                      <span className="text-[13px] text-[#708499] font-medium ml-2">Tars is thinking...</span>
+                      <span className="text-[13px] font-medium ml-2 themed-text-secondary">Tars is thinking...</span>
                     </div>
                   )}
                 </div>
@@ -556,28 +550,27 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
           )}
 
           <div ref={scrollRef} />
-        </div >
+        </div>
       </div>
 
-      {
-        showScrollButton && (
-          <button
-            onClick={() => {
-              setShowScrollButton(false);
-              scrollRef.current?.scrollIntoView({ behavior: "smooth" });
-            }}
-            className="absolute bottom-28 right-6 md:right-10 z-[100] flex items-center gap-2 bg-[#3390ec] hover:bg-[#2c84d8] text-white px-4 py-2 rounded-full shadow-2xl animate-in zoom-in slide-in-from-bottom-5 duration-300 font-medium text-sm group"
-          >
-            <ArrowDown className="h-4 w-4 animate-bounce" />
-            <span>New messages</span>
-          </button>
-        )
-      }
+      {showScrollButton && (
+        <button
+          onClick={() => {
+            setShowScrollButton(false);
+            scrollRef.current?.scrollIntoView({ behavior: "smooth" });
+          }}
+          className="absolute bottom-28 right-6 md:right-10 z-[100] flex items-center gap-2 text-white px-4 py-2 rounded-full shadow-2xl animate-in zoom-in slide-in-from-bottom-5 duration-300 font-medium text-sm group"
+          style={{ backgroundColor: 'var(--accent)' }}
+        >
+          <ArrowDown className="h-4 w-4 animate-bounce" />
+          <span>New messages</span>
+        </button>
+      )}
 
       <div className="px-4 pb-6 z-20">
         <div className="max-w-[1000px] mx-auto flex items-end gap-3">
           <form onSubmit={handleSend} className="flex-1 relative flex items-end gap-2">
-            <div className="flex-1 relative bg-white border border-[#e4e4e7] rounded-[24px] px-5 py-3 shadow-xl min-h-[50px] focus-within:border-[#3390ec]/30 transition-colors">
+            <div className="flex-1 relative border rounded-[24px] px-5 py-3 shadow-xl min-h-[50px] transition-colors themed-bg themed-border focus-within:border-black/10">
               <textarea
                 rows={1}
                 ref={inputRef}
@@ -591,14 +584,14 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
                 }}
                 disabled={isAiGenerating}
                 placeholder={isAiGenerating ? "Tars is thinking..." : "Message"}
-                className="w-full bg-transparent border-none placeholder-gray-400 text-black focus:outline-none text-[15px] resize-none max-h-48 custom-scrollbar pt-0.5"
+                className="w-full bg-transparent border-none placeholder-gray-400 focus:outline-none text-[15px] resize-none max-h-48 custom-scrollbar pt-0.5 themed-text"
               />
             </div>
             {isAiGenerating ? (
               <button
                 type="button"
                 onClick={handleStopAI}
-                className="h-[50px] w-[50px] flex items-center justify-center rounded-full bg-white text-[#ef4444] hover:bg-[#fef2f2] transition-all shadow-xl border border-[#e4e4e7] shrink-0 active:scale-90"
+                className="h-[50px] w-[50px] flex items-center justify-center rounded-full transition-all shadow-xl border shrink-0 active:scale-90 themed-bg themed-border text-[#ef4444] hover:bg-[#ef4444]/10"
                 title="Stop generation"
               >
                 <Square className="h-5 w-5 fill-current" />
@@ -607,7 +600,8 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
               <button
                 type="submit"
                 disabled={!input.trim()}
-                className="h-[50px] w-[50px] flex items-center justify-center rounded-full bg-[#3390ec] text-white hover:bg-[#2c84d8] disabled:opacity-0 disabled:scale-95 transition-all shadow-xl shrink-0"
+                className="h-[50px] w-[50px] flex items-center justify-center rounded-full text-white hover:opacity-90 disabled:opacity-0 disabled:scale-95 transition-all shadow-xl shrink-0"
+                style={{ backgroundColor: 'var(--accent)' }}
               >
                 <Send className="h-6 w-6 ml-[-2px]" />
               </button>
@@ -641,7 +635,7 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
           font-size: 1.1rem;
           font-weight: 700;
           margin: 1rem 0 0.5rem 0;
-          color: #3390ec;
+          color: var(--accent);
         }
         .markdown-content ul, .markdown-content ol {
           margin-bottom: 0.75rem;
@@ -680,20 +674,20 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
 
       {showConfirmClear && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl p-7 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="rounded-3xl p-7 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200 themed-bg">
             <div className="flex flex-col items-center text-center mb-5">
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#ef4444] to-[#f97316] flex items-center justify-center mb-4 shadow-lg">
                 <Trash2 className="h-8 w-8 text-white" />
               </div>
-              <h3 className="text-xl font-bold text-black mb-1">Clear Conversation?</h3>
-              <p className="text-[#708499] text-sm leading-relaxed">
+              <h3 className="text-xl font-bold themed-text mb-1">Clear Conversation?</h3>
+              <p className="themed-text-secondary text-sm leading-relaxed">
                 All messages will be permanently deleted. The conversation and its members will remain.
               </p>
             </div>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowConfirmClear(false)}
-                className="flex-1 py-3 rounded-2xl font-semibold text-[#708499] bg-[#f4f4f5] hover:bg-[#e4e4e7] transition-colors"
+                className="flex-1 py-3 rounded-2xl font-semibold bg-black/5 hover:bg-black/10 transition-colors themed-text-secondary"
               >
                 Cancel
               </button>
@@ -731,7 +725,7 @@ function GroupInfo({
   onLeave: () => Promise<void>;
 }) {
   const members = useQuery(api.conversations.getGroupMembers, { conversationId });
-  const { groupDetails } = details;
+  const groupDetails = details.groupDetails;
   const me = useQuery(api.users.getMe);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(groupDetails?.name || "");
@@ -779,19 +773,19 @@ function GroupInfo({
     }
   };
 
-
   return (
     <div className="absolute inset-x-0 bottom-0 top-0 bg-black/20 z-[100] animate-in fade-in duration-300 backdrop-blur-sm flex justify-end">
       <div
-        className="w-full max-w-md bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300"
+        className="w-full max-w-md h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 themed-bg"
       >
-        <div className="h-16 border-b border-[#e4e4e7] px-6 flex items-center justify-between shrink-0">
-          <h3 className="text-lg font-bold text-black text-center flex-1">Group Info</h3>
+        <div className="h-16 border-b px-6 flex items-center justify-between shrink-0 themed-border">
+          <h3 className="text-lg font-bold text-center flex-1 themed-text">Group Info</h3>
           <div className="flex items-center gap-1">
             {isAdmin && !isEditing && (
               <button
                 onClick={() => setIsEditing(true)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors text-[#3390ec]"
+                className="p-2 hover:bg-black/5 rounded-full transition-colors"
+                style={{ color: 'var(--accent)' }}
                 title="Edit Group"
               >
                 <Edit2 className="h-5 w-5" />
@@ -799,7 +793,7 @@ function GroupInfo({
             )}
             <button
               onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500"
+              className="p-2 hover:bg-black/5 rounded-full transition-colors themed-text-secondary"
             >
               <X className="h-6 w-6" />
             </button>
@@ -807,7 +801,7 @@ function GroupInfo({
         </div>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar">
-          <div className="p-8 flex flex-col items-center bg-[#f8fafc] border-b border-[#e2e8f0]">
+          <div className="p-8 flex flex-col items-center border-b themed-border bg-black/[0.02]">
             {isEditing ? (
               <div className="w-full space-y-4">
                 <div className="flex flex-col items-center mb-6 w-full">
@@ -819,38 +813,42 @@ function GroupInfo({
                           setEditIcon(icon);
                           setCurrentStorageId(null);
                         }}
-                        className={`h-12 w-12 rounded-full border-2 transition-all overflow-hidden ${editIcon === icon ? 'border-[#3390ec] scale-115 shadow-lg' : 'border-transparent hover:border-gray-200 hover:scale-105'}`}
+                        className={`h-12 w-12 rounded-full border-2 transition-all overflow-hidden ${editIcon === icon ? 'scale-110 shadow-lg' : 'border-transparent hover:border-black/20 hover:scale-105'}`}
+                        style={{ borderColor: editIcon === icon ? 'var(--accent)' : 'transparent' }}
                       >
                         <img src={icon} className="h-full w-full object-cover" alt="Preset Icon" />
                       </button>
                     ))}
                   </div>
-                  <p className="text-[11px] text-gray-400 font-medium uppercase tracking-wider">Select Group Icon</p>
+                  <p className="text-[11px] font-medium uppercase tracking-wider themed-text-secondary">Select Group Icon</p>
                 </div>
                 <input
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
                   placeholder="Group Name"
-                  className="w-full p-2 border rounded-lg font-bold text-center text-lg focus:ring-1 focus:ring-[#3390ec]"
+                  className="w-full p-2 border rounded-lg font-bold text-center text-lg focus:ring-1 themed-bg themed-text themed-border"
+                  style={{ '--tw-ring-color': 'var(--accent)' } as any}
                 />
                 <textarea
                   value={editDesc}
                   onChange={(e) => setEditDesc(e.target.value)}
                   placeholder="Description..."
                   rows={3}
-                  className="w-full p-2 border rounded-lg text-sm focus:ring-1 focus:ring-[#3390ec] resize-none"
+                  className="w-full p-2 border rounded-lg text-sm focus:ring-1 resize-none themed-bg themed-text themed-border"
+                  style={{ '--tw-ring-color': 'var(--accent)' } as any}
                 />
                 <div className="flex gap-2">
                   <button
                     onClick={() => setIsEditing(false)}
-                    className="flex-1 py-2 text-sm font-medium text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="flex-1 py-2 text-sm font-medium themed-text-secondary bg-black/5 hover:bg-black/10 rounded-lg transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleSave}
                     disabled={isUpdating || !editName.trim()}
-                    className="flex-1 py-2 text-sm font-medium bg-[#3390ec] text-white hover:bg-[#2c84d8] rounded-lg transition-colors flex items-center justify-center gap-2"
+                    className="flex-1 py-2 text-sm font-medium text-white hover:opacity-90 rounded-lg transition-colors flex items-center justify-center gap-2"
+                    style={{ backgroundColor: 'var(--accent)' }}
                   >
                     {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                     Save
@@ -861,18 +859,19 @@ function GroupInfo({
               <>
                 <img
                   src={groupDetails?.icon ?? "https://cdn-icons-png.flaticon.com/512/166/166258.png"}
-                  className="h-32 w-32 rounded-full object-cover border-4 border-white shadow-lg mb-4"
+                  className="h-32 w-32 rounded-full object-cover border-4 themed-border shadow-lg mb-4"
                   alt="Group Icon"
                 />
-                <h2 className="text-2xl font-bold text-black mb-1">{groupDetails?.name}</h2>
+                <h2 className="text-2xl font-bold themed-text mb-1">{groupDetails?.name}</h2>
                 <div className="flex items-center gap-2 mb-2">
-                  <p className="text-[13px] text-[#708499] uppercase tracking-wider font-bold">
+                  <p className="text-[13px] uppercase tracking-wider font-bold themed-text-secondary">
                     Group · {groupDetails?.participantCount} Members
                   </p>
                 </div>
                 <button
                   onClick={handleMentionAll}
-                  className="mt-2 flex items-center gap-2 px-4 py-2 bg-[#3390ec]/10 text-[#3390ec] rounded-full text-xs font-bold hover:bg-[#3390ec]/20 transition-all active:scale-95"
+                  className="mt-2 flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all active:scale-95"
+                  style={{ backgroundColor: 'var(--accent)', color: 'white' }}
                 >
                   <Users className="h-3 w-3" />
                   Mention Everyone
@@ -882,20 +881,20 @@ function GroupInfo({
           </div>
 
           {groupDetails?.description && (
-            <div className="p-6 bg-white border-b border-[#e4e4e7]">
-              <h4 className="text-[12px] font-bold text-[#3390ec] uppercase tracking-wider mb-2">Description</h4>
-              <p className="text-[15px] text-[#2c3e50] leading-relaxed whitespace-pre-wrap">{groupDetails.description}</p>
+            <div className="p-6 border-b themed-border">
+              <h4 className="text-[12px] font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--accent)' }}>Description</h4>
+              <p className="text-[15px] leading-relaxed whitespace-pre-wrap themed-text">{groupDetails.description}</p>
             </div>
           )}
 
-          <div className="p-6 bg-white border-b border-[#e4e4e7]">
-            <div className="flex items-center gap-3 text-gray-400 text-[13px]">
+          <div className="p-6 border-b themed-border">
+            <div className="flex items-center gap-3 text-[13px] themed-text-secondary">
               <span>Created on {format(new Date(details.conversation._creationTime), "MMM d, yyyy")}</span>
             </div>
           </div>
 
           <div className="p-6">
-            <h4 className="text-[12px] font-bold text-[#3390ec] uppercase tracking-wider mb-4">
+            <h4 className="text-[12px] font-bold uppercase tracking-wider mb-4" style={{ color: 'var(--accent)' }}>
               {groupDetails?.participantCount} Participants
             </h4>
             <div className="space-y-4">
@@ -904,18 +903,18 @@ function GroupInfo({
                   <div className="relative">
                     <img src={member.image} className="h-10 w-10 rounded-full object-cover" alt={member.name} />
                     {member.isOnline && (
-                      <div className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-[#3390ec] border-2 border-white" />
+                      <div className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 themed-border" style={{ backgroundColor: 'var(--accent)' }} />
                     )}
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-1.5 flex-1">
-                      <p className="text-[15px] font-medium text-black truncate max-w-[150px]">{member.name}</p>
-                      {member.isAI && <Sparkles className="h-3 w-3 text-[#3390ec] fill-[#3390ec]/10" />}
+                      <p className="text-[15px] font-medium truncate max-w-[150px] themed-text">{member.name}</p>
+                      {member.isAI && <Sparkles className="h-3 w-3" style={{ color: 'var(--accent)', fill: 'var(--accent)', opacity: 0.1 }} />}
                       {member._id === details.conversation.adminId && (
-                        <span className="text-[9px] bg-[#3390ec]/10 text-[#3390ec] px-1.5 py-0.5 rounded-full font-bold uppercase shrink-0">Admin</span>
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase shrink-0" style={{ backgroundColor: 'var(--accent)', color: 'white' }}>Admin</span>
                       )}
                     </div>
-                    <p className="text-[12px] text-gray-500">
+                    <p className="text-[12px] themed-text-secondary">
                       {member.isAI ? "Tars AI Agent" : member.isOnline ? "Online" : "Last seen recently"}
                     </p>
                   </div>
@@ -924,14 +923,16 @@ function GroupInfo({
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => onMention(member.name)}
-                        className="p-2 hover:bg-blue-50 rounded-full text-[#3390ec] transition-colors"
+                        className="p-2 hover:bg-black/5 rounded-full transition-colors"
+                        style={{ color: 'var(--accent)' }}
                         title={`Mention ${member.name}`}
                       >
                         <AtSign className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => onMessage(member._id)}
-                        className="p-2 hover:bg-blue-50 rounded-full text-[#3390ec] transition-colors"
+                        className="p-2 hover:bg-black/5 rounded-full transition-colors"
+                        style={{ color: 'var(--accent)' }}
                         title={`Message ${member.name}`}
                       >
                         <MessageSquare className="h-4 w-4" />
@@ -943,10 +944,10 @@ function GroupInfo({
             </div>
           </div>
 
-          <div className="p-6 bg-[#f8fafc] mt-auto">
+          <div className="p-6 bg-black/[0.02] mt-auto">
             <button
               onClick={() => setShowConfirmLeave(true)}
-              className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white hover:bg-[#fef2f2] text-[#ef4444] border border-[#e4e4e7] rounded-xl font-bold text-sm transition-all active:scale-95 shadow-sm"
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 border rounded-xl font-bold text-sm transition-all active:scale-95 shadow-sm themed-bg themed-border text-[#ef4444] hover:bg-[#ef4444]/10"
             >
               <LogOut className="h-4 w-4" />
               Leave Group
@@ -956,15 +957,15 @@ function GroupInfo({
 
         {showConfirmLeave && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in duration-200">
-              <h3 className="text-lg font-bold text-black mb-2">Leave Group?</h3>
-              <p className="text-gray-500 text-sm mb-6">
+            <div className="rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in duration-200 themed-bg">
+              <h3 className="text-lg font-bold themed-text mb-2">Leave Group?</h3>
+              <p className="themed-text-secondary text-sm mb-6">
                 Are you sure you want to leave this group? You won't be able to send or receive messages here anymore.
               </p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowConfirmLeave(false)}
-                  className="flex-1 py-2.5 rounded-xl font-medium text-gray-500 hover:bg-gray-100 transition-colors"
+                  className="flex-1 py-2.5 rounded-xl font-medium themed-text-secondary bg-black/5 hover:bg-black/10 transition-colors"
                 >
                   Go Back
                 </button>

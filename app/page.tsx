@@ -43,13 +43,13 @@ export default function Home() {
   }, [isAuthenticated, storeUser, heartbeat, offline, ensureAI]);
 
   if (isLoading) return (
-    <div className="flex h-screen items-center justify-center bg-[#f0f2f5]">
-      <Loader2 className="h-10 w-10 animate-spin text-[#3390ec]" />
+    <div className="flex h-screen items-center justify-center themed-bg">
+      <Loader2 className="h-10 w-10 animate-spin" style={{ color: 'var(--accent)' }} />
     </div>
   );
 
   return (
-    <main className="min-h-screen bg-[#f0f2f5] text-black">
+    <main className="min-h-screen transition-colors duration-200 themed-bg themed-text">
       <Show when="signed-out">
         {/* --- PREMIUM LIGHT LANDING SCREEN --- */}
         <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 bg-white">
@@ -97,7 +97,7 @@ export default function Home() {
           {/* Sidebar Area: Mobile Toggle Logic */}
           <div className={`
             ${chatId ? "hidden md:flex" : "flex"} 
-            w-full md:w-[320px] lg:w-[400px] flex-col border-r border-[#e4e4e7] bg-white z-30
+            w-full md:w-[320px] lg:w-[400px] flex-col border-r themed-border themed-bg z-30
           `}>
             <Sidebar />
           </div>
@@ -105,14 +105,15 @@ export default function Home() {
           {/* Main Chat Area: Mobile Toggle Logic */}
           <div className={`
             ${!chatId ? "hidden md:flex" : "flex"} 
-            flex-1 flex-col relative bg-[#f0f2f5]
+            flex-1 flex-col relative themed-chat-bg
           `}>
             {chatId ? (
               <>
                 {/* Mobile Back Button */}
                 <button
                   onClick={() => router.push("/")}
-                  className="md:hidden absolute top-3 left-3 z-50 h-10 w-10 flex items-center justify-center rounded-full bg-white/90 backdrop-blur-sm text-[#3390ec] border border-[#e4e4e7] shadow-sm active:scale-90 transition-all"
+                  className="md:hidden absolute top-3 left-3 z-50 h-10 w-10 flex items-center justify-center rounded-full backdrop-blur-sm border shadow-sm active:scale-90 transition-all themed-bg themed-border"
+                  style={{ color: 'var(--accent)' }}
                 >
                   <ChevronLeft className="h-6 w-6" />
                 </button>
@@ -120,11 +121,11 @@ export default function Home() {
               </>
             ) : (
               <section className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-                <div className="bg-white rounded-full p-8 mb-6 shadow-xl border border-gray-50">
-                  <Sparkles className="h-16 w-16 text-[#3390ec]" />
+                <div className="rounded-full p-8 mb-6 shadow-xl border themed-bg themed-border">
+                  <Sparkles className="h-16 w-16" style={{ color: 'var(--accent)' }} />
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome to Tars Chat</h2>
-                <p className="text-gray-500 max-w-sm">
+                <h2 className="text-2xl font-bold themed-text mb-2">Welcome to Tars Chat</h2>
+                <p className="themed-text-secondary max-w-sm">
                   Select a contact from the sidebar or search for someone new to start a high-speed conversation.
                 </p>
               </section>

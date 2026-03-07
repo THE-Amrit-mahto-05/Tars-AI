@@ -1,14 +1,102 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg-sidebar: #ffffff;
+  --bg-chat: #f0f2f5;
+  --bg-input: #ffffff;
+  --text-primary: #000000;
+  --text-secondary: #708499;
+  --accent: #3390ec;
+  --bubble-me: #3390ec;
+  --bubble-me-text: #ffffff;
+  --bubble-other: #ffffff;
+  --bubble-other-text: #000000;
+  --border: #e4e4e7;
+  --sidebar-hover: #f4f4f5;
+}
+
+[data-theme='dark'] {
+  --bg-sidebar: #17212b;
+  --bg-chat: #0e1621;
+  --bg-input: #17212b;
+  --text-primary: #ffffff;
+  --text-secondary: #7f91a4;
+  --accent: #2ea6ff;
+  --bubble-me: #2b5278;
+  --bubble-me-text: #ffffff;
+  --bubble-other: #182533;
+  --bubble-other-text: #ffffff;
+  --border: #0e1621;
+  --sidebar-hover: #242f3d;
+}
+
+[data-theme='telegram'] {
+  --bg-sidebar: #ffffff;
+  --bg-chat: #54759e;
+  --bg-input: #ffffff;
+  --text-primary: #000000;
+  --text-secondary: #708499;
+  --accent: #3390ec;
+  --bubble-me: #effdde;
+  --bubble-me-text: #000000;
+  --bubble-other: #ffffff;
+  --bubble-other-text: #000000;
+  --border: #e4e4e7;
+  --sidebar-hover: #f4f4f5;
+}
+
+[data-theme='whatsapp'] {
+  --bg-sidebar: #ffffff;
+  --bg-chat: #e5ddd5;
+  --bg-input: #ffffff;
+  --text-primary: #000000;
+  --text-secondary: #708499;
+  --accent: #25d366;
+  --bubble-me: #dcf8c6;
+  --bubble-me-text: #000000;
+  --bubble-other: #ffffff;
+  --bubble-other-text: #000000;
+  --border: #e4e4e7;
+  --sidebar-hover: #f4f4f5;
 }
 
 body {
-  background: #f0f2f5;
-  color: #000000;
+  background-color: var(--bg-chat);
+  color: var(--text-primary);
   font-family: Arial, Helvetica, sans-serif;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.themed-bg {
+  background-color: var(--bg-sidebar);
+}
+
+.themed-chat-bg {
+  background-color: var(--bg-chat);
+}
+
+.themed-text {
+  color: var(--text-primary);
+}
+
+.themed-text-secondary {
+  color: var(--text-secondary);
+}
+
+.sidebar-item-hover:hover {
+  background-color: var(--sidebar-hover) !important;
+}
+
+.themed-border {
+  border-color: var(--border);
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 /* Helps the browser manage scrolling during content updates */
