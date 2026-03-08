@@ -5,7 +5,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 
-import { Search, Sparkles, Users, X, CheckCircle2, ImagePlus, Loader2 } from "lucide-react";
+import { Search, Sparkles, Users, X, CheckCircle2, ImagePlus, Loader2, MessageSquare, AtSign } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
 import { format, isToday, isThisYear } from "date-fns";
@@ -181,14 +181,23 @@ export function Sidebar() {
               )}
 
             <p className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider mt-2" style={{ color: 'var(--accent)' }}>People</p>
-            {users?.length === 0 && <p className="px-4 py-2 text-sm text-[#708499]">No users found</p>}
-            {users?.map((user) => (
-              <SidebarUserItem
-                key={user._id}
-                user={user}
-                onClick={() => handleUserClick(user)}
-              />
-            ))}
+            {users?.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 px-4 text-center animate-in fade-in zoom-in-95 duration-300">
+                <div className="p-3 rounded-full bg-black/5 mb-3">
+                  <AtSign className="h-7 w-7 opacity-20" />
+                </div>
+                <p className="text-sm font-medium themed-text">No users found</p>
+                <p className="text-xs themed-text-secondary mt-1">Try a different name or username.</p>
+              </div>
+            ) : (
+              users?.map((user) => (
+                <SidebarUserItem
+                  key={user._id}
+                  user={user}
+                  onClick={() => handleUserClick(user)}
+                />
+              ))
+            )}
           </div>
         ) : (
           <div className="py-1">
@@ -206,9 +215,21 @@ export function Sidebar() {
                 <SidebarChatItem key={conv._id} conversation={conv} onClick={() => handleChatClick(conv._id)} />
               ))
             ) : (
-              <div className="p-8 text-center text-[#708499] flex flex-col items-center gap-3">
-                <div className="bg-black/5 p-4 rounded-full"><Users className="h-8 w-8 opacity-20" /></div>
-                <p className="text-sm">No conversations yet. Search for someone to start chatting!</p>
+              <div className="flex flex-col items-center justify-center py-16 px-6 text-center animate-in fade-in zoom-in-95 duration-300">
+                <div className="p-5 rounded-2xl bg-black/5 mb-4">
+                  <MessageSquare className="h-10 w-10 opacity-20" />
+                </div>
+                <p className="text-[15px] font-semibold themed-text mb-1">No conversations yet</p>
+                <p className="text-[13px] themed-text-secondary leading-relaxed">
+                  Search for someone below to start your first conversation!
+                </p>
+                <button
+                  onClick={() => document.querySelector<HTMLInputElement>('input[placeholder*="Search"]')?.focus()}
+                  className="mt-5 px-5 py-2 rounded-full text-[13px] font-semibold text-white transition-all active:scale-95 shadow-md hover:opacity-90"
+                  style={{ backgroundColor: 'var(--accent)' }}
+                >
+                  Start a Chat
+                </button>
               </div>
             )}
           </div>
