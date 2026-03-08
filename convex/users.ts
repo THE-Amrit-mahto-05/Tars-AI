@@ -106,19 +106,22 @@ export const offline = mutation({
   },
 });
 
-export const getUsers = query({
-  args: { searchTerm: v.string() },
-  handler: async (ctx, args) => {
+export const searchByEmail = query({
+  args: { emailQuery: v.string() },
+  handler: async (ctx, { emailQuery }) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return [];
 
-    const allUsers = await ctx.db.query("users").collect();
+    // Privacy Guard: Don't return anything if the search is too short
+    if (emailQuery.length < 3) return [];
 
-    return allUsers
+    const users = await ctx.db
+      .query("users")
+      .withSearchIndex("search_email", (q) => q.search("email", emailQuery))
+      .take(5);
+
+    return users
       .filter((user) => user.clerkId !== identity.subject)
-      .filter((user) =>
-        user.name.toLowerCase().includes(args.searchTerm.toLowerCase())
-      )
       .map((user) => ({
         ...user,
         isOnline: user.isOnline && (Date.now() - (user.lastSeen ?? 0) < 25000),

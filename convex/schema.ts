@@ -10,7 +10,8 @@ export default defineSchema({
     isOnline: v.boolean(),
     lastSeen: v.optional(v.number()),
     isAI: v.optional(v.boolean()),
-  }).index("by_clerkId", ["clerkId"]),
+  }).index("by_clerkId", ["clerkId"])
+    .searchIndex("search_email", { searchField: "email" }),
 
   messages: defineTable({
     body: v.string(),

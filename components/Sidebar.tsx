@@ -40,7 +40,7 @@ export function Sidebar() {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const conversations = useQuery(api.conversations.list);
-  const users = useQuery(api.users.getUsers, { searchTerm: search });
+  const users = useQuery(api.users.searchByEmail, { emailQuery: search });
   const startChat = useMutation(api.conversations.getOrCreateConversation);
   const createGroup = useMutation(api.conversations.createGroup);
 
@@ -143,7 +143,7 @@ export function Sidebar() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder={isSelectionMode ? "Search people to add..." : "Search users or chats..."}
+            placeholder={isSelectionMode ? "Search people to add..." : "Enter an email to find someone..."}
             className="w-full border-none rounded-lg py-1.5 pl-10 pr-4 text-sm outline-none transition-all"
             style={{ backgroundColor: 'var(--bg-chat)', color: 'var(--text-primary)' }}
           />
@@ -181,13 +181,21 @@ export function Sidebar() {
               )}
 
             <p className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider mt-2" style={{ color: 'var(--accent)' }}>People</p>
-            {users?.length === 0 ? (
+            {!search.trim() ? (
+              <div className="flex flex-col items-center justify-center py-8 px-4 text-center animate-in fade-in zoom-in-95 duration-300">
+                <div className="p-3 rounded-full bg-black/5 mb-3">
+                  <AtSign className="h-7 w-7 opacity-20" />
+                </div>
+                <p className="text-sm font-medium themed-text">Find someone</p>
+                <p className="text-xs themed-text-secondary mt-1 max-w-[200px]">Enter a full email address to search for people.</p>
+              </div>
+            ) : users?.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 px-4 text-center animate-in fade-in zoom-in-95 duration-300">
                 <div className="p-3 rounded-full bg-black/5 mb-3">
                   <AtSign className="h-7 w-7 opacity-20" />
                 </div>
                 <p className="text-sm font-medium themed-text">No users found</p>
-                <p className="text-xs themed-text-secondary mt-1">Try a different name or username.</p>
+                <p className="text-xs themed-text-secondary mt-1">Make sure the email is typed correctly.</p>
               </div>
             ) : (
               users?.map((user) => (
