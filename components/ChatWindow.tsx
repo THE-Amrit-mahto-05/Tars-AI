@@ -193,14 +193,13 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
 
         const finalAiText = aiText;
 
-        setStreamingAIText("");
-        setIsAiGenerating(false);
-
-        await setTyping({ conversationId, isTyping: false });
-
         if (finalAiText) {
           await sendAI({ body: finalAiText, conversationId });
         }
+
+        setIsAiGenerating(false);
+        setStreamingAIText("");
+        await setTyping({ conversationId, isTyping: false });
 
         abortControllerRef.current = null;
         setTimeout(() => inputRef.current?.focus(), 0);
@@ -543,7 +542,7 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
           })}
 
 
-          {isAiGenerating && messages?.[messages.length - 1]?.authorId !== aiMember?._id && (
+          {isAiGenerating && messages?.[messages.length - 1]?.body?.trim() !== streamingAIText.trim() && (
             <div className="flex w-full justify-start mt-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
               <div className="flex gap-3 items-end max-w-[85%] sm:max-w-[70%]">
                 <div className="relative shrink-0">
