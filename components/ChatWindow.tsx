@@ -53,7 +53,7 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
   const deleteConversation = useMutation(api.conversations.deleteConversation);
 
   const members = useQuery(api.conversations.getGroupMembers, { conversationId });
-  const aiMember = members?.find(m => m?.isAI);
+  const aiMember = members?.find(m => m?.isAI) || (details?.otherUser?.isAI ? details.otherUser : null);
 
   const isChattingWithAI = details?.otherUser?.clerkId === "ai-bot";
 
@@ -107,7 +107,7 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
     if (isAtBottom) {
       container.scrollTo({
         top: scrollHeight,
-        behavior: (isAiGenerating || streamingAIText) ? "instant" : "smooth",
+        behavior: "smooth",
       });
     }
   }, [messages, isAiGenerating, streamingAIText, showScrollButton]);
@@ -192,8 +192,10 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
         }
 
         const finalAiText = aiText;
-        setIsAiGenerating(false);
+
         setStreamingAIText("");
+        setIsAiGenerating(false);
+
         await setTyping({ conversationId, isTyping: false });
 
         if (finalAiText) {
@@ -541,7 +543,7 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
           })}
 
 
-          {isAiGenerating && (
+          {isAiGenerating && messages?.[messages.length - 1]?.authorId !== aiMember?._id && (
             <div className="flex w-full justify-start mt-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
               <div className="flex gap-3 items-end max-w-[85%] sm:max-w-[70%]">
                 <div className="relative shrink-0">
