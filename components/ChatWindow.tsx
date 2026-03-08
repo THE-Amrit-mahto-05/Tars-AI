@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import ReactDOM from "react-dom";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -310,9 +311,9 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
       />
 
       {/* Header */}
-      <div className="h-[60px] px-6 flex items-center justify-between border-b shadow-sm transition-colors duration-200 themed-bg themed-border z-10">
-        <div className="flex items-center gap-3 overflow-hidden">
-          <div className="relative cursor-pointer hover:opacity-90 transition-opacity" onClick={() => details?.conversation.isGroup && setShowGroupInfo(true)}>
+      <div className="h-[60px] px-6 flex items-center justify-between border-b shadow-sm transition-colors duration-200 themed-bg themed-border" style={{ position: 'relative', zIndex: 50 }}>
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="relative cursor-pointer hover:opacity-90 transition-opacity shrink-0" onClick={() => details?.conversation.isGroup && setShowGroupInfo(true)}>
             <img
               src={details?.conversation.isGroup
                 ? (details?.conversation.icon || "https://cdn-icons-png.flaticon.com/512/166/166258.png")
@@ -324,11 +325,11 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
               <div className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 themed-border" style={{ backgroundColor: 'var(--accent)' }} />
             )}
           </div>
-          <div className="flex flex-col text-left overflow-hidden">
+          <div className="flex flex-col text-left min-w-0">
             <h3 className="text-[15px] font-bold truncate leading-tight transition-colors themed-text">
               {details?.conversation.isGroup ? details?.conversation.name : details?.otherUser?.name}
             </h3>
-            <p className="text-[12px] font-medium transition-colors themed-text-secondary">
+            <p className="text-[12px] font-medium transition-colors themed-text-secondary truncate">
               {details?.conversation.isGroup
                 ? `${details?.groupDetails?.participantCount} members`
                 : details?.otherUser?.isAI ? "Tars AI" : (details?.otherUser?.isOnline ? "online" : (details?.otherUser?.lastSeen ? formatLastSeen(details.otherUser.lastSeen) : "offline"))}
@@ -336,34 +337,43 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
           </div>
         </div>
 
-        <div
-          className="flex items-center gap-2 relative"
-          onMouseEnter={() => setShowDeleteMenu(true)}
-          onMouseLeave={() => setShowDeleteMenu(false)}
-        >
+        <div className="flex items-center gap-2 shrink-0">
           <button
+            onClick={() => setShowDeleteMenu(prev => !prev)}
             className="p-2 hover:bg-black/5 rounded-full transition-colors themed-text-secondary"
           >
             <MoreVertical className="h-5 w-5" />
           </button>
-
-          {showDeleteMenu && (
-            <div className="absolute top-full right-0 mt-1 border shadow-xl rounded-xl py-1.5 w-48 z-[100] animate-in fade-in zoom-in duration-200 themed-bg themed-border">
-              <button
-                onClick={() => {
-                  setShowDeleteMenu(false);
-                  setShowConfirmClear(true);
-                }}
-                disabled={isDeleting}
-                className="w-full px-4 py-2 text-left text-[14px] text-[#ef4444] hover:bg-[#ef4444]/10 flex items-center gap-3 transition-colors"
-              >
-                <Trash2 className="h-4 w-4" />
-                {isDeleting ? "Clearing..." : "Clear Chat"}
-              </button>
-            </div>
-          )}
         </div>
       </div>
+
+      {showDeleteMenu && typeof window !== "undefined" && ReactDOM.createPortal(
+        <>
+          {/* Click outside overlay */}
+          <div
+            style={{ position: 'fixed', inset: 0, zIndex: 9998 }}
+            onClick={() => setShowDeleteMenu(false)}
+          />
+          {/* The menu itself - positioned near top-right of screen */}
+          <div
+            style={{ position: 'fixed', top: '68px', right: '24px', zIndex: 9999, minWidth: '192px' }}
+            className="border shadow-xl rounded-xl py-1.5 themed-bg themed-border"
+          >
+            <button
+              onClick={() => {
+                setShowDeleteMenu(false);
+                setShowConfirmClear(true);
+              }}
+              disabled={isDeleting}
+              className="w-full px-4 py-2.5 text-left text-[14px] text-[#ef4444] hover:bg-[#ef4444]/10 flex items-center gap-3 transition-colors"
+            >
+              <Trash2 className="h-4 w-4" />
+              {isDeleting ? "Clearing..." : "Clear Chat"}
+            </button>
+          </div>
+        </>,
+        document.body
+      )}
 
       <div
         ref={containerRef}
@@ -698,9 +708,16 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
         />
       )}
 
-      {showConfirmClear && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="rounded-3xl p-7 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200 themed-bg">
+      {showConfirmClear && typeof window !== "undefined" && ReactDOM.createPortal(
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+          onClick={() => setShowConfirmClear(false)}
+        >
+          <div
+            className="rounded-3xl p-7 w-full max-w-sm shadow-2xl themed-bg"
+            style={{ maxWidth: '24rem', width: '100%', position: 'relative' }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex flex-col items-center text-center mb-5">
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#ef4444] to-[#f97316] flex items-center justify-center mb-4 shadow-lg">
                 <Trash2 className="h-8 w-8 text-white" />
@@ -727,7 +744,8 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
