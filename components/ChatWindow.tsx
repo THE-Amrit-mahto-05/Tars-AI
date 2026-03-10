@@ -152,6 +152,7 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
     const shouldTriggerAI = isChattingWithAI || (details?.conversation.isGroup && userMessage.includes("@Tars"));
 
     if (shouldTriggerAI) {
+      let aiText = "";
       try {
         abortControllerRef.current = new AbortController();
         const signal = abortControllerRef.current.signal;
@@ -180,7 +181,6 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
 
         const reader = response.body?.getReader();
         const decoder = new TextDecoder();
-        let aiText = "";
         let displayedAiText = "";
 
         const displayLoop = setInterval(() => {
@@ -221,6 +221,9 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
       } catch (error: any) {
         if (error.name !== "AbortError") {
           console.error("AI Error:", error);
+        }
+        if (aiText.trim()) {
+          await sendAI({ body: aiText, conversationId });
         }
         await setTyping({ conversationId, isTyping: false });
         setIsAiGenerating(false);
