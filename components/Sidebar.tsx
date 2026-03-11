@@ -368,7 +368,7 @@ function SidebarChatItem({ conversation, onClick }: { conversation: Conversation
               {unreadCount}
             </span>
           ) : (
-            <span className="text-[12px] transition-colors themed-text-secondary">
+            <span className="text-[12px] transition-colors themed-text-secondary" suppressHydrationWarning>
               {conversation.lastMessage ? formatMessageTimestamp(conversation.lastMessage._creationTime) : ""}
             </span>
           )}
