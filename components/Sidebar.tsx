@@ -334,7 +334,7 @@ function SidebarChatItem({ conversation, onClick }: { conversation: Conversation
     : conversation.otherUser?.image;
   const name = isGroup ? conversation.name : conversation.otherUser?.name;
 
-  const unreadCount = useQuery(api.presence.getUnreadCount, { conversationId: conversation._id });
+  const unreadCount = conversation.unreadCount;
 
   const formatMessageTimestamp = (ts: number) => {
     const date = new Date(ts);

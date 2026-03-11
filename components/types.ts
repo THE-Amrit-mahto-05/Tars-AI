@@ -17,7 +17,7 @@ export interface Conversation extends Doc<"conversations"> {
         isSystem?: boolean;
     } | null;
     typingUserName: string | null;
-    typingUserImage?: string | null;
+    unreadCount?: number;
     groupDetails?: {
         name?: string;
         description?: string;

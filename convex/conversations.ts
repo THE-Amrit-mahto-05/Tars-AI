@@ -285,6 +285,24 @@ export const list = query({
           .order("desc")
           .first();
 
+        // Optimized Unread Count
+        const presence = await ctx.db
+          .query("userPresence")
+          .withIndex("by_user_conversation", (q) =>
+            q.eq("userId", me._id).eq("conversationId", conv._id)
+          )
+          .unique();
+
+        const lastReadTime = presence?.lastReadTime ?? 0;
+        const unreadMessages = await ctx.db
+          .query("messages")
+          .withIndex("by_conversation", (q) => q.eq("conversationId", conv._id))
+          .filter((q) => q.gt(q.field("_creationTime"), lastReadTime))
+          .filter((q) => q.neq(q.field("authorId"), me._id))
+          .collect();
+
+        const unreadCount = unreadMessages.length;
+
         let typingUserName = null;
         let finalTypingUser = conv.typingUser;
         if (conv.typingUser && conv.typingUser !== me._id) {
@@ -312,6 +330,7 @@ export const list = query({
             isSystem: lastMessage.isSystem,
           } : null,
           typingUserName,
+          unreadCount,
         };
       })
     );

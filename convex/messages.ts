@@ -9,20 +9,23 @@ export const list = query({
 
     const messages = await ctx.db
       .query("messages")
-      .filter((q) => q.eq(q.field("conversationId"), args.conversationId))
+      .withIndex("by_conversation", (q) => q.eq("conversationId", args.conversationId))
       .collect();
 
-    return await Promise.all(
-      messages.map(async (msg) => {
-        const author = await ctx.db.get(msg.authorId);
-        return {
-          ...msg,
-          authorName: author?.name ?? "Unknown",
-          authorImage: author?.image ?? "",
-          isMe: author?.clerkId === identity.subject,
-        };
-      })
-    );
+    // Batch fetch authors to avoid N+1
+    const authorIds = [...new Set(messages.map(m => m.authorId))];
+    const authors = await Promise.all(authorIds.map(id => ctx.db.get(id)));
+    const authorMap = new Map(authorIds.map((id, i) => [id, authors[i]]));
+
+    return messages.map((msg) => {
+      const author = authorMap.get(msg.authorId);
+      return {
+        ...msg,
+        authorName: author?.name ?? "Unknown",
+        authorImage: author?.image ?? "",
+        isMe: author?.clerkId === identity.subject,
+      };
+    });
   },
 });
 

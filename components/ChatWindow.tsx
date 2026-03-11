@@ -186,11 +186,12 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
 
         const displayLoop = setInterval(() => {
           if (displayedAiText.length < aiText.length) {
-            const chunkSize = Math.min(10, aiText.length - displayedAiText.length);
+            // Speed up the display: take larger chunks
+            const chunkSize = Math.max(5, Math.ceil((aiText.length - displayedAiText.length) / 5));
             displayedAiText += aiText.substring(displayedAiText.length, displayedAiText.length + chunkSize);
             setStreamingAIText(displayedAiText);
           }
-        }, 5);
+        }, 16); // ~60fps
 
         try {
           while (true) {
@@ -199,22 +200,17 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
             const chunk = decoder.decode(value);
             aiText += chunk;
           }
-
-          while (displayedAiText.length < aiText.length) {
-            await new Promise(resolve => setTimeout(resolve, 5));
-          }
         } finally {
+          // Send to database immediately after stream finishes, don't wait for displayLoop
+          if (aiText) {
+            await sendAI({ body: aiText, conversationId });
+          }
+          
+          // Clear up
           clearInterval(displayLoop);
+          setIsAiGenerating(false);
+          setStreamingAIText("");
         }
-
-        const finalAiText = aiText;
-
-        if (finalAiText) {
-          await sendAI({ body: finalAiText, conversationId });
-        }
-
-        setIsAiGenerating(false);
-        setStreamingAIText("");
 
         abortControllerRef.current = null;
         setTimeout(() => inputRef.current?.focus(), 0);
@@ -404,158 +400,18 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
           )}
           {messages?.map((msg, index: number) => {
             const prevMsg = messages[index - 1];
-            const isSameAuthorAsPrev = prevMsg?.authorId === msg.authorId;
-            const isSystem = msg.isSystem;
-            const isMe = msg.authorId === me?._id;
-            const isDeleted = msg.isDeleted;
-
-            if (isSystem) {
-              const showDateDivider = !prevMsg || !isSameDay(prevMsg._creationTime, msg._creationTime);
-              return (
-                <React.Fragment key={msg._id}>
-                  {showDateDivider && (
-                    <div className="flex items-center justify-center my-4">
-                      <div
-                        className="text-[11px] font-semibold px-4 py-1 rounded-full tracking-wide backdrop-blur-sm shadow-sm"
-                        style={{ backgroundColor: 'var(--date-bg)', color: 'var(--date-text)' }}
-                      >
-                        {formatDateLabel(msg._creationTime)}
-                      </div>
-                    </div>
-                  )}
-                  <div className="flex justify-center my-1 w-full">
-                    <div
-                      className="backdrop-blur-sm text-[12px] px-4 py-1 rounded-full font-medium shadow-sm transition-colors"
-                      style={{ backgroundColor: 'var(--date-bg)', color: 'var(--date-text)' }}
-                    >
-                      {msg.body}
-                    </div>
-                  </div>
-                </React.Fragment>
-              );
-            }
-
-            const showDateDivider = !prevMsg || !isSameDay(prevMsg._creationTime, msg._creationTime);
-
             return (
-              <React.Fragment key={msg._id}>
-                {showDateDivider && (
-                  <div className="flex items-center justify-center my-4">
-                    <div
-                      className="text-[11px] font-semibold px-4 py-1 rounded-full tracking-wide backdrop-blur-sm shadow-sm"
-                      style={{ backgroundColor: 'var(--date-bg)', color: 'var(--date-text)' }}
-                    >
-                      {formatDateLabel(msg._creationTime)}
-                    </div>
-                  </div>
-                )}
-                <div
-                  className={`flex group w-full ${isMe ? "justify-end" : "justify-start"} ${!isSameAuthorAsPrev || showDateDivider ? "mt-4" : "mt-0.5"}`}
-                >
-                  <div className={`relative max-w-[85%] sm:max-w-[70%] px-4 py-2.5 shadow-sm group transition-all duration-200 message-bubble
-                    ${isMe
-                      ? "rounded-2xl rounded-tr-sm message-bubble-me"
-                      : "rounded-2xl rounded-tl-sm border themed-border message-bubble-other"
-                    }
-                    ${isDeleted ? "opacity-50 grayscale-[0.5]" : ""}
-                  `}
-                    style={{
-                      backgroundColor: isMe ? 'var(--bubble-me)' : 'var(--bubble-other)',
-                      color: isMe ? 'var(--bubble-me-text)' : 'var(--bubble-other-text)',
-                    }}
-                  >
-                    {details?.conversation.isGroup && !isMe && (
-                      <p className="text-[11px] font-bold mb-1" style={{ color: 'var(--accent)' }}>{msg.authorName}</p>
-                    )}
-                    <div className={`text-[15px] leading-relaxed break-words pr-10 markdown-content ${isDeleted ? "italic opacity-70" : ""}`}>
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {isDeleted ? "This message was deleted" : msg.body}
-                      </ReactMarkdown>
-                    </div>
-
-                    {!isDeleted && msg.reactions && msg.reactions.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {Object.entries(
-                          msg.reactions.reduce((acc: Record<string, number>, r) => {
-                            acc[r.emoji] = (acc[r.emoji] || 0) + 1;
-                            return acc;
-                          }, {})
-                        ).map(([emoji, count]: [string, number]) => {
-                          const hasReacted = msg.reactions?.some((r) => r.user === me?._id && r.emoji === emoji);
-                          return (
-                            <button
-                              key={emoji}
-                              onClick={() => toggleReaction({ messageId: msg._id, emoji })}
-                              className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] font-bold transition-all border
-                            ${hasReacted
-                                  ? "bg-black/10 border-black/20 themed-text"
-                                  : "bg-black/5 border-transparent themed-text-secondary hover:border-black/10"
-                                }`}
-                            >
-                              <span>{emoji}</span>
-                              <span>{count}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {!isDeleted && (
-                      <div className={`absolute top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all
-                        ${isMe ? "-left-20" : "-right-16 md:-right-20"}
-                      `}>
-                        <div className="relative group/picker">
-                          <button
-                            className="h-8 w-8 flex items-center justify-center rounded-full border shadow-sm themed-bg themed-border themed-text-secondary hover:themed-text"
-                            title="Add reaction"
-                          >
-                            <SmilePlus className="h-4 w-4" />
-                          </button>
-
-                          <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 border shadow-xl rounded-full px-2 py-1.5 flex gap-1.5 scale-0 group-hover/picker:scale-100 transition-transform origin-bottom z-[100] themed-bg themed-border">
-                            {["👍", "❤️", "😂", "😮", "😢", "🔥"].map(emoji => (
-                              <button
-                                key={emoji}
-                                onClick={() => toggleReaction({ messageId: msg._id, emoji })}
-                                className="hover:scale-125 transition-transform p-0.5 text-lg"
-                              >
-                                {emoji}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        <button
-                          onClick={() => handleCopy(msg._id, msg.body)}
-                          className="h-8 w-8 flex items-center justify-center rounded-full border shadow-sm transition-all themed-bg themed-border themed-text-secondary hover:themed-text"
-                          title="Copy message"
-                        >
-                          {copiedId === msg._id ? (
-                            <Check className="h-4 w-4 text-green-500" />
-                          ) : (
-                            <Copy className="h-4 w-4" />
-                          )}
-                        </button>
-
-                        {isMe && (
-                          <button
-                            onClick={() => removeMessage({ messageId: msg._id })}
-                            className="h-8 w-8 flex items-center justify-center rounded-full border shadow-sm themed-bg themed-border text-[#ef4444] hover:bg-[#ef4444]/10"
-                            title="Delete message"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        )}
-                      </div>
-                    )}
-
-                    <span className={`absolute bottom-1 right-2 text-[10px] select-none font-medium opacity-60`}
-                    >
-                      {formatMessageTimestamp(msg._creationTime)}
-                    </span>
-                  </div>
-                </div>
-              </React.Fragment>
+              <MessageItem
+                key={msg._id}
+                msg={msg}
+                prevMsg={prevMsg}
+                me={me}
+                details={details}
+                toggleReaction={toggleReaction}
+                handleCopy={handleCopy}
+                copiedId={copiedId}
+                removeMessage={removeMessage}
+              />
             );
           })}
 
@@ -790,6 +646,176 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
     </div>
   );
 }
+
+const formatDateLabel = (ts: number) => {
+  const date = new Date(ts);
+  if (isToday(date)) return "Today";
+  if (isYesterday(date)) return "Yesterday";
+  if (isThisYear(date)) return format(date, "MMMM d");
+  return format(date, "MMMM d, yyyy");
+};
+
+const formatMessageTimestamp = (ts: number) => format(new Date(ts), "h:mm a");
+
+const isSameDay = (ts1: number, ts2: number) =>
+  format(new Date(ts1), "yyyy-MM-dd") === format(new Date(ts2), "yyyy-MM-dd");
+
+const MessageItem = React.memo(({ msg, prevMsg, me, details, toggleReaction, handleCopy, copiedId, removeMessage }: any) => {
+  const isSameAuthorAsPrev = prevMsg?.authorId === msg.authorId;
+  const isSystem = msg.isSystem;
+  const isMe = msg.authorId === me?._id;
+  const isDeleted = msg.isDeleted;
+
+  if (isSystem) {
+    const showDateDivider = !prevMsg || !isSameDay(prevMsg._creationTime, msg._creationTime);
+    return (
+      <React.Fragment key={msg._id}>
+        {showDateDivider && (
+          <div className="flex items-center justify-center my-4">
+            <div
+              className="text-[11px] font-semibold px-4 py-1 rounded-full tracking-wide backdrop-blur-sm shadow-sm"
+              style={{ backgroundColor: 'var(--date-bg)', color: 'var(--date-text)' }}
+            >
+              {formatDateLabel(msg._creationTime)}
+            </div>
+          </div>
+        )}
+        <div className="flex justify-center my-1 w-full">
+          <div
+            className="backdrop-blur-sm text-[12px] px-4 py-1 rounded-full font-medium shadow-sm transition-colors"
+            style={{ backgroundColor: 'var(--date-bg)', color: 'var(--date-text)' }}
+          >
+            {msg.body}
+          </div>
+        </div>
+      </React.Fragment>
+    );
+  }
+
+  const showDateDivider = !prevMsg || !isSameDay(prevMsg._creationTime, msg._creationTime);
+
+  return (
+    <React.Fragment key={msg._id}>
+      {showDateDivider && (
+        <div className="flex items-center justify-center my-4">
+          <div
+            className="text-[11px] font-semibold px-4 py-1 rounded-full tracking-wide backdrop-blur-sm shadow-sm"
+            style={{ backgroundColor: 'var(--date-bg)', color: 'var(--date-text)' }}
+          >
+            {formatDateLabel(msg._creationTime)}
+          </div>
+        </div>
+      )}
+      <div
+        className={`flex group w-full ${isMe ? "justify-end" : "justify-start"} ${!isSameAuthorAsPrev || showDateDivider ? "mt-4" : "mt-0.5"}`}
+      >
+        <div className={`relative max-w-[85%] sm:max-w-[70%] px-4 py-2.5 shadow-sm group transition-all duration-200 message-bubble
+          ${isMe
+            ? "rounded-2xl rounded-tr-sm message-bubble-me"
+            : "rounded-2xl rounded-tl-sm border themed-border message-bubble-other"
+          }
+          ${isDeleted ? "opacity-50 grayscale-[0.5]" : ""}
+        `}
+          style={{
+            backgroundColor: isMe ? 'var(--bubble-me)' : 'var(--bubble-other)',
+            color: isMe ? 'var(--bubble-me-text)' : 'var(--bubble-other-text)',
+          }}
+        >
+          {details?.conversation.isGroup && !isMe && (
+            <p className="text-[11px] font-bold mb-1" style={{ color: 'var(--accent)' }}>{msg.authorName}</p>
+          )}
+          <div className={`text-[15px] leading-relaxed break-words pr-10 markdown-content ${isDeleted ? "italic opacity-70" : ""}`}>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {isDeleted ? "This message was deleted" : msg.body}
+            </ReactMarkdown>
+          </div>
+
+          {!isDeleted && msg.reactions && msg.reactions.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {Object.entries(
+                msg.reactions.reduce((acc: Record<string, number>, r: any) => {
+                  acc[r.emoji] = (acc[r.emoji] || 0) + 1;
+                  return acc;
+                }, {})
+              ).map(([emoji, count]) => {
+                const hasReacted = msg.reactions?.some((r: any) => r.user === me?._id && r.emoji === emoji);
+                return (
+                  <button
+                    key={emoji}
+                    onClick={() => toggleReaction({ messageId: msg._id, emoji })}
+                    className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] font-bold transition-all border
+                  ${hasReacted
+                        ? "bg-black/10 border-black/20 themed-text"
+                        : "bg-black/5 border-transparent themed-text-secondary hover:border-black/10"
+                      }`}
+                  >
+                    <span>{emoji}</span>
+                    <span>{count as number}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {!isDeleted && (
+            <div className={`absolute top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all
+              ${isMe ? "-left-20" : "-right-16 md:-right-20"}
+            `}>
+              <div className="relative group/picker">
+                <button
+                  className="h-8 w-8 flex items-center justify-center rounded-full border shadow-sm themed-bg themed-border themed-text-secondary hover:themed-text"
+                  title="Add reaction"
+                >
+                  <SmilePlus className="h-4 w-4" />
+                </button>
+
+                <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 border shadow-xl rounded-full px-2 py-1.5 flex gap-1.5 scale-0 group-hover/picker:scale-100 transition-transform origin-bottom z-[100] themed-bg themed-border">
+                  {["👍", "❤️", "😂", "😮", "😢", "🔥"].map(emoji => (
+                    <button
+                      key={emoji}
+                      onClick={() => toggleReaction({ messageId: msg._id, emoji })}
+                      className="hover:scale-125 transition-transform p-0.5 text-lg"
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                onClick={() => handleCopy(msg._id, msg.body)}
+                className="h-8 w-8 flex items-center justify-center rounded-full border shadow-sm transition-all themed-bg themed-border themed-text-secondary hover:themed-text"
+                title="Copy message"
+              >
+                {copiedId === msg._id ? (
+                  <Check className="h-4 w-4 text-green-500" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+              </button>
+
+              {isMe && (
+                <button
+                  onClick={() => removeMessage({ messageId: msg._id })}
+                  className="h-8 w-8 flex items-center justify-center rounded-full border shadow-sm themed-bg themed-border text-[#ef4444] hover:bg-[#ef4444]/10"
+                  title="Delete message"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          )}
+
+          <span className={`absolute bottom-1 right-2 text-[10px] select-none font-medium opacity-60`}
+          >
+            {formatMessageTimestamp(msg._creationTime)}
+          </span>
+        </div>
+      </div>
+    </React.Fragment>
+  );
+});
+MessageItem.displayName = "MessageItem";
 
 function GroupInfo({
   conversationId,
