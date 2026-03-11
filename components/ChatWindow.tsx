@@ -323,20 +323,22 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
       {/* Header */}
       <div className="h-[60px] px-6 flex items-center justify-between border-b shadow-sm transition-colors duration-200 themed-bg themed-border" style={{ position: 'relative', zIndex: 50 }}>
         <div className="flex items-center gap-3 min-w-0 flex-1">
-          <div className="relative cursor-pointer hover:opacity-90 transition-opacity shrink-0 rounded-full overflow-hidden"
+          <div className="relative cursor-pointer hover:opacity-90 transition-opacity shrink-0"
             onClick={() => details?.conversation.isGroup && setShowGroupInfo(true)}>
-            <Image
-              src={details?.conversation.isGroup
-                ? (details?.conversation.icon || "https://cdn-icons-png.flaticon.com/512/166/166258.png")
-                : details?.otherUser?.image ?? ""}
-              width={40}
-              height={40}
-              unoptimized
-              className="h-10 w-10 rounded-full object-cover border border-black/5"
-              alt="Avatar"
-            />
+            <div className="overflow-hidden rounded-full">
+              <Image
+                src={details?.conversation.isGroup
+                  ? (details?.conversation.icon || "https://cdn-icons-png.flaticon.com/512/166/166258.png")
+                  : details?.otherUser?.image ?? ""}
+                width={40}
+                height={40}
+                unoptimized
+                className="h-10 w-10 rounded-full object-cover border border-black/5"
+                alt="Avatar"
+              />
+            </div>
             {!details?.conversation.isGroup && !details?.otherUser?.isAI && details?.otherUser?.isOnline && (
-              <div className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 themed-border" style={{ backgroundColor: 'var(--accent)' }} />
+              <div className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 themed-border z-10" style={{ backgroundColor: 'var(--accent)' }} />
             )}
           </div>
           <div className="flex flex-col text-left min-w-0 cursor-pointer"

@@ -349,10 +349,12 @@ function SidebarChatItem({ conversation, onClick }: { conversation: Conversation
       className="w-full flex items-center gap-3 px-3 py-2.5 transition-colors group relative border-b border-transparent sidebar-item-hover"
     >
       <div className="absolute left-0 top-0 bottom-0 w-[4px] transition-opacity opacity-0 group-hover:opacity-100" style={{ backgroundColor: 'var(--accent)' }} />
-      <div className="relative shrink-0 overflow-hidden rounded-full">
-        <Image src={imageUrl ?? ""} width={48} height={48} unoptimized className="h-12 w-12 rounded-full object-cover" alt={name ?? "alt"} />
+      <div className="relative shrink-0">
+        <div className="overflow-hidden rounded-full">
+          <Image src={imageUrl ?? ""} width={48} height={48} unoptimized className="h-12 w-12 rounded-full object-cover" alt={name ?? "alt"} />
+        </div>
         {!isGroup && !conversation.otherUser?.isAI && conversation.otherUser?.isOnline && (
-          <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 themed-border" style={{ backgroundColor: 'var(--accent)' }} />
+          <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 themed-border z-10" style={{ backgroundColor: 'var(--accent)' }} />
         )}
       </div>
       <div className="flex-1 text-left overflow-hidden">
