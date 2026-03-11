@@ -398,11 +398,12 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
         document.body
       )}
 
-      <div
-        ref={containerRef}
-        onScroll={handleScroll}
-        className="flex-1 overflow-y-auto z-10 custom-scrollbar pb-4 relative"
-      >
+      <div className="flex-1 min-h-0 relative flex flex-col">
+        <div
+          ref={containerRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto z-10 custom-scrollbar pb-4"
+        >
         <div className="max-w-[1000px] mx-auto p-4 md:p-8 space-y-2">
           {displayMessages?.length === 0 && !isAiGenerating && (
             <div className="flex flex-col items-center justify-center py-20 opacity-40">
@@ -498,13 +499,15 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
           <div ref={scrollRef} />
         </div>
 
+        </div>
+
         {showScrollButton && (
           <button
             onClick={() => {
               setShowScrollButton(false);
               scrollRef.current?.scrollIntoView({ behavior: "smooth" });
             }}
-            className="absolute bottom-28 right-6 md:right-10 z-[100] flex items-center gap-2 text-white px-4 py-2 rounded-full shadow-2xl animate-in zoom-in slide-in-from-bottom-5 duration-300 font-medium text-sm group"
+            className="absolute bottom-6 right-6 md:right-10 z-[100] flex items-center gap-2 text-white px-4 py-2 rounded-full shadow-2xl animate-in zoom-in slide-in-from-bottom-5 duration-300 font-medium text-sm group"
             style={{ backgroundColor: 'var(--accent)' }}
           >
             <ArrowDown className="h-4 w-4 animate-bounce" />
