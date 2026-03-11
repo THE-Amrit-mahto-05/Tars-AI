@@ -69,7 +69,7 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
   const members = useQuery(api.conversations.getGroupMembers, { conversationId });
   const aiMember = members?.find(m => m?.isAI) || (displayDetails?.otherUser?.isAI ? displayDetails.otherUser : null);
 
-  const isChattingWithAI = displayDetails?.otherUser?.clerkId === "ai-bot";
+  const isChattingWithAI = !!aiMember || isAiGenerating || (displayDetails?.otherUser?.clerkId === "ai-bot");
 
   useEffect(() => {
     if (messages) {
@@ -118,64 +118,123 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
   const isAtBottom = useRef(true);
   const prevIsAiGenerating = useRef(false);
   const lastScrollTimeRef = useRef(0);
+  const lastProcessedMsgId = useRef<string | null>(null);
+  const isAutoScrollingRef = useRef(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
     if (containerRef.current) {
-      containerRef.current.scrollTo({
-        top: containerRef.current.scrollHeight,
+      isAutoScrollingRef.current = true;
+
+      // Clear the previous timeout so overlapping rapid scrolls don't kill the protection midway
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+
+      // PRECISE TARGETING: Find the last message element to avoid scrolling into empty padding
+      const container = containerRef.current;
+      const lastMessageEl = container.lastElementChild as HTMLElement;
+      
+      let targetScrollTop = container.scrollHeight;
+      
+      if (lastMessageEl) {
+        // Calculate the exact bottom edge of the last message
+        const messageBottom = lastMessageEl.offsetTop + lastMessageEl.offsetHeight;
+        // Subtract the viewport height to align the bottom of the message exactly with the bottom of the screen
+        // We do NOT add a buffer here, so it stops EXACTLY when the text is fully visible (no extra space below).
+        targetScrollTop = messageBottom - container.clientHeight; 
+        
+        // Ensure we don't scroll to a negative value
+        targetScrollTop = Math.max(0, targetScrollTop);
+      }
+
+      container.scrollTo({
+        top: targetScrollTop,
         behavior,
       });
+
+      // Reset the flag after a duration long enough for smooth scroll to finish
+      scrollTimeoutRef.current = setTimeout(() => {
+        isAutoScrollingRef.current = false;
+        scrollTimeoutRef.current = null;
+      }, 1000);
     }
   };
 
   useEffect(() => {
-    if (messages && messages.length > 0 && conversationId !== lastScrolledId.current) {
+    // RULE_AI_AUTOSCROLL (Entry): 
+    // We only anchor to the bottom on first load for AI BOT chats.
+    if (isChattingWithAI && messages && messages.length > 0 && conversationId !== lastScrolledId.current) {
       scrollToBottom("auto");
       lastScrolledId.current = conversationId;
       isAtBottom.current = true;
       setShowScrollButton(false);
     }
-  }, [messages, conversationId]);
+
+    // RULE_PEER_MANUAL_ONLY (Entry): 
+    // Human chats do NOT snap to bottom on load. They stay where you left them.
+  }, [messages, conversationId, isChattingWithAI]);
 
   useLayoutEffect(() => {
+    // ---- handlePeerScrollRule ----
+    // For normal people conversations, we disable ALL automatic movement.
+    if (!isChattingWithAI) return;
+
+    // ---- handleAIAutoScrollRule ----
+    // This part only runs for the AI Bot.
+    const aiJustStarted = !prevIsAiGenerating.current && isAiGenerating;
     const aiJustFinished = prevIsAiGenerating.current && !isAiGenerating;
     prevIsAiGenerating.current = isAiGenerating;
 
-    if (!messages) return;
+    if (!messages || messages.length === 0) return;
 
     const lastMsg = messages[messages.length - 1];
     const isFromMe = (lastMsg as any)?.authorId === me?._id || lastMsg?.isMe;
+    const container = containerRef.current;
+    if (!container) return;
 
-    // RULE 1: If I send a message, force scroll to bottom instantly
-    if (isFromMe) {
+    // RULE A: Generation Latch
+    // When Tars starts thinking, if the user is "near" the bottom, we force-hook to bottom.
+    // This ensures the autoscroll engine correctly follows the streaming text.
+    if (aiJustStarted) {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      const distanceToBottom = scrollHeight - scrollTop - clientHeight;
+      if (distanceToBottom < 150) {
+        scrollToBottom("auto");
+        isAtBottom.current = true;
+        setShowScrollButton(false);
+        return;
+      }
+    }
+
+    // RULE B: Self-Snaps (Only for AI queries)
+    if (isFromMe && (lastMsg as any)._id !== lastProcessedMsgId.current) {
       scrollToBottom("auto");
+      lastProcessedMsgId.current = (lastMsg as any)._id;
       isAtBottom.current = true;
       setShowScrollButton(false);
       return;
     }
 
-    const container = containerRef.current;
-    if (!container) return;
-
-    // RULE 2: Stability during generation
-    // We only scroll if: 
-    // 1. The user is "Watching" (no gap)
-    // 2. The text is "Hiding" (overflowing viewport)
-    // 3. We haven't scrolled in the last 300ms (throttle to stop oscillation)
+    // RULE C: Streaming Reveal (Reveal text while user is looking)
     if ((isAiGenerating || streamingAIText || aiJustFinished) && isAtBottom.current && !showScrollButton) {
-      const { scrollTop, scrollHeight, clientHeight } = container;
-      const isOverflowing = scrollHeight > scrollTop + clientHeight + 10; // 10px buffer
+      const { scrollTop, clientHeight } = container;
+      const lastMessageEl = container.lastElementChild as HTMLElement;
       
-      if (isOverflowing) {
-        const now = Date.now();
-        if (now - lastScrollTimeRef.current > 300) {
-          scrollToBottom("smooth");
-          lastScrollTimeRef.current = now;
-          if (aiJustFinished) isAtBottom.current = true;
+      if (lastMessageEl) {
+        const messageBottom = lastMessageEl.offsetTop + lastMessageEl.offsetHeight;
+        // The message is overflowing if its bottom edge is below the current visible viewport
+        const isOverflowing = messageBottom > scrollTop + clientHeight;
+        
+        if (isOverflowing) {
+          const now = Date.now();
+          if (now - lastScrollTimeRef.current > 300) {
+            scrollToBottom("smooth");
+            lastScrollTimeRef.current = now;
+            if (aiJustFinished) isAtBottom.current = true;
+          }
         }
       }
     }
-  }, [messages, isAiGenerating, streamingAIText, showScrollButton, me?._id]);
+  }, [messages, isAiGenerating, streamingAIText, showScrollButton, me?._id, isChattingWithAI]);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
@@ -184,13 +243,22 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
     // Threshold for showing the "New messages" button
     setShowScrollButton(distanceToBottom > 300);
 
-    // Update sticky lock status - 200px threshold to account for smooth scroll lag
-    isAtBottom.current = distanceToBottom < 200;
+    // Update sticky lock status. 
+    // If the scroll happened because of the AGENT (isAutoScrollingRef), we FORCE stickiness to stay true.
+    // If the scroll happened because of the USER (gap created), we use the tight 10px threshold.
+    if (isAutoScrollingRef.current) {
+      isAtBottom.current = true;
+    } else {
+      isAtBottom.current = distanceToBottom < 10;
+    }
   };
 
   useEffect(() => {
     inputRef.current?.focus();
     setShowScrollButton(false);
+    // CRITICAL: Reset the scroll anchor so the next message load triggers a fresh jump to bottom (for AI)
+    lastScrolledId.current = null;
+    isAtBottom.current = true;
   }, [conversationId]);
 
 
