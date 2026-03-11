@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useLayoutEffect } from "react";
 import ReactDOM from "react-dom";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -115,39 +115,77 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
   }, [input, conversationId, setTyping]);
 
   const lastScrolledId = useRef<string | null>(null);
+  const isAtBottom = useRef(true);
+  const prevIsAiGenerating = useRef(false);
+  const lastScrollTimeRef = useRef(0);
+
+  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+    if (containerRef.current) {
+      containerRef.current.scrollTo({
+        top: containerRef.current.scrollHeight,
+        behavior,
+      });
+    }
+  };
 
   useEffect(() => {
     if (messages && messages.length > 0 && conversationId !== lastScrolledId.current) {
-      if (containerRef.current) {
-        containerRef.current.scrollTo({
-          top: containerRef.current.scrollHeight,
-          behavior: "instant",
-        });
-        lastScrolledId.current = conversationId;
-        setShowScrollButton(false);
-      }
+      scrollToBottom("auto");
+      lastScrolledId.current = conversationId;
+      isAtBottom.current = true;
+      setShowScrollButton(false);
     }
   }, [messages, conversationId]);
 
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container || showScrollButton) return;
+  useLayoutEffect(() => {
+    const aiJustFinished = prevIsAiGenerating.current && !isAiGenerating;
+    prevIsAiGenerating.current = isAiGenerating;
 
-    const { scrollTop, scrollHeight, clientHeight } = container;
-    const isAtBottom = scrollHeight - scrollTop - clientHeight < 150;
+    if (!messages) return;
 
-    if (isAtBottom) {
-      container.scrollTo({
-        top: scrollHeight,
-        behavior: "smooth",
-      });
+    const lastMsg = messages[messages.length - 1];
+    const isFromMe = (lastMsg as any)?.authorId === me?._id || lastMsg?.isMe;
+
+    // RULE 1: If I send a message, force scroll to bottom instantly
+    if (isFromMe) {
+      scrollToBottom("auto");
+      isAtBottom.current = true;
+      setShowScrollButton(false);
+      return;
     }
-  }, [messages, isAiGenerating, streamingAIText, showScrollButton]);
+
+    const container = containerRef.current;
+    if (!container) return;
+
+    // RULE 2: Stability during generation
+    // We only scroll if: 
+    // 1. The user is "Watching" (no gap)
+    // 2. The text is "Hiding" (overflowing viewport)
+    // 3. We haven't scrolled in the last 300ms (throttle to stop oscillation)
+    if ((isAiGenerating || streamingAIText || aiJustFinished) && isAtBottom.current && !showScrollButton) {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      const isOverflowing = scrollHeight > scrollTop + clientHeight + 10; // 10px buffer
+      
+      if (isOverflowing) {
+        const now = Date.now();
+        if (now - lastScrollTimeRef.current > 300) {
+          scrollToBottom("smooth");
+          lastScrollTimeRef.current = now;
+          if (aiJustFinished) isAtBottom.current = true;
+        }
+      }
+    }
+  }, [messages, isAiGenerating, streamingAIText, showScrollButton, me?._id]);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    const isUp = scrollHeight - scrollTop - clientHeight > 300;
-    setShowScrollButton(isUp);
+    const distanceToBottom = scrollHeight - scrollTop - clientHeight;
+    
+    // Threshold for showing the "New messages" button
+    setShowScrollButton(distanceToBottom > 300);
+
+    // Update sticky lock status - 200px threshold to account for smooth scroll lag
+    isAtBottom.current = distanceToBottom < 200;
   };
 
   useEffect(() => {
