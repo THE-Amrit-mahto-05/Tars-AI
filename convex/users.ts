@@ -122,11 +122,22 @@ export const searchByEmail = query({
 
     return users
       .filter((user) => user.clerkId !== identity.subject)
-      .map((user) => ({
-        ...user,
-        isOnline: Boolean(user.isOnline) && (Date.now() - (user.lastSeen ?? 0) < 25000),
-        isAI: user.isAI ?? false,
-      }));
+      .map((user) => {
+        const result: any = {
+          _id: user._id,
+          _creationTime: user._creationTime,
+          name: user.name,
+          email: user.email,
+          image: user.image,
+          clerkId: user.clerkId,
+          isOnline: Boolean(user.isOnline) && (Date.now() - (user.lastSeen ?? 0) < 25000),
+          isAI: user.isAI ?? false,
+        };
+        if (user.lastSeen !== undefined) {
+          result.lastSeen = user.lastSeen;
+        }
+        return result;
+      });
   },
 });
 
@@ -150,11 +161,22 @@ export const list = query({
 
     return users
       .filter((user) => user && user.clerkId !== identity.subject)
-      .map((user) => ({
-        ...user,
-        isOnline: Boolean(user.isOnline) && (Date.now() - (user.lastSeen ?? 0) < 25000),
-        isAI: user.isAI ?? false,
-      }));
+      .map((user) => {
+        const result: any = {
+          _id: user._id,
+          _creationTime: user._creationTime,
+          name: user.name,
+          email: user.email,
+          image: user.image,
+          clerkId: user.clerkId,
+          isOnline: Boolean(user.isOnline) && (Date.now() - (user.lastSeen ?? 0) < 25000),
+          isAI: user.isAI ?? false,
+        };
+        if (user.lastSeen !== undefined) {
+          result.lastSeen = user.lastSeen;
+        }
+        return result;
+      });
   },
 });
 
