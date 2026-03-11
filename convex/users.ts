@@ -129,6 +129,34 @@ export const searchByEmail = query({
   },
 });
 
+export const list = query({
+  args: { search: v.optional(v.string()) },
+  handler: async (ctx, { search }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+
+    let users;
+    if (search && search.trim().length > 0) {
+      users = await ctx.db
+        .query("users")
+        .withSearchIndex("search_email", (q) => q.search("email", search))
+        .take(10);
+      
+      // If no results from email search, try fuzzy search by name (if implemented)
+      // or just return small subset for now
+    } else {
+      users = await ctx.db.query("users").take(20);
+    }
+
+    return users
+      .filter((user) => user.clerkId !== identity.subject)
+      .map((user) => ({
+        ...user,
+        isOnline: user.isOnline && (Date.now() - (user.lastSeen ?? 0) < 25000),
+      }));
+  },
+});
+
 export const getAllUsersDebug = query({
   args: {},
   handler: async (ctx) => {

@@ -36,7 +36,7 @@ export function Sidebar() {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const conversations = useQuery(api.conversations.list);
-  const users = useQuery(api.users.searchByEmail, { emailQuery: search });
+  const users = useQuery(api.users.list, { search: search });
   const startChat = useMutation(api.conversations.getOrCreateConversation);
   const createGroup = useMutation(api.conversations.createGroup);
 
@@ -407,10 +407,12 @@ function SidebarUserItem({
     >
       <div className={`absolute left-0 top-0 bottom-0 w-[4px] transition-opacity ${isSelected || isSelectionMode ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} style={{ backgroundColor: 'var(--accent)' }} />
 
-      <div className="relative shrink-0 overflow-hidden rounded-full">
-        <Image src={user.image} width={48} height={48} unoptimized className="h-12 w-12 rounded-full object-cover" alt={user.name} />
+      <div className="relative shrink-0">
+        <div className="overflow-hidden rounded-full">
+          <Image src={user.image} width={48} height={48} unoptimized className="h-12 w-12 rounded-full object-cover" alt={user.name} />
+        </div>
         {isSelectionMode && isSelected && (
-          <div className="absolute -top-1 -right-1 h-5 w-5 rounded-full text-white flex items-center justify-center border-2 themed-border animate-in zoom-in duration-200" style={{ backgroundColor: 'var(--accent)' }}>
+          <div className="absolute -top-1 -right-1 h-5 w-5 rounded-full text-white flex items-center justify-center border-2 themed-border animate-in zoom-in duration-200 z-10" style={{ backgroundColor: 'var(--accent)' }}>
             <CheckCircle2 className="h-3 w-3" />
           </div>
         )}
