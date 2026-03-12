@@ -43,16 +43,31 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
   const details = useQuery(api.conversations.getChatDetails, { conversationId });
   const messages = useQuery(api.messages.list, { conversationId });
 
-  // Stale-while-loading logic
-  const [displayDetails, setDisplayDetails] = useState<any>(undefined);
-  const [displayMessages, setDisplayMessages] = useState<any[] | undefined>(undefined);
+  // Stale-while-loading logic - show optimistic UI immediately
+  const [displayDetails, setDisplayDetails] = useState<any>(() => {
+    // Initialize with URL params for instant display
+    if (initialName || initialImg) {
+      return {
+        conversation: { isGroup: false },
+        otherUser: { name: initialName, image: initialImg, isOnline: false }
+      };
+    }
+    return undefined;
+  });
+  const [displayMessages, setDisplayMessages] = useState<any[] | undefined>([]);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(true);
 
   useEffect(() => {
-    if (details !== undefined) setDisplayDetails(details);
+    if (details !== undefined) {
+      setDisplayDetails(details);
+    }
   }, [details]);
 
   useEffect(() => {
-    if (messages !== undefined) setDisplayMessages(messages);
+    if (messages !== undefined) {
+      setDisplayMessages(messages);
+      setIsLoadingMessages(false);
+    }
   }, [messages]);
   const { theme } = useTheme();
   const sendMessage = useMutation(api.messages.send);
@@ -511,7 +526,20 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
           className="flex-1 overflow-y-auto z-10 custom-scrollbar pb-4"
         >
           <div className="max-w-[1000px] mx-auto p-4 md:p-8 space-y-2">
-            {displayMessages?.length === 0 && !isAiGenerating && (
+            {isLoadingMessages && displayMessages?.length === 0 && (
+              <div className="flex flex-col gap-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex gap-3 items-start animate-pulse">
+                    <div className="h-8 w-8 rounded-full bg-black/10 dark:bg-white/10 shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 bg-black/10 dark:bg-white/10 rounded w-3/4" />
+                      <div className="h-3 bg-black/5 dark:bg-white/5 rounded w-1/2" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {displayMessages?.length === 0 && !isLoadingMessages && !isAiGenerating && (
               <div className="flex flex-col items-center justify-center py-20 opacity-40">
                 <div className="p-6 rounded-full shadow-sm mb-4 themed-bg">
                   <Sparkles className="h-12 w-12" style={{ color: 'var(--accent)' }} />

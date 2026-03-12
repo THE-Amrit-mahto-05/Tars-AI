@@ -282,15 +282,18 @@ export function Sidebar() {
         
         {/* Theme Toggle Button */}
         <button
-          onClick={() => setShowSettings(true)}
-          className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-all duration-300 transform hover:scale-110 group"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowSettings(true);
+          }}
+          className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-all duration-300 transform hover:scale-110 group relative"
           title="Change Theme"
           style={{
             backgroundColor: 'var(--bg-chat)',
           }}
         >
           <Palette className="h-5 w-5 transition-all duration-300" style={{ color: 'var(--accent)' }} />
-          <div className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-20 transition-opacity" style={{ backgroundColor: 'var(--accent)' }} />
+          <div className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-20 transition-opacity pointer-events-none" style={{ backgroundColor: 'var(--accent)' }} />
         </button>
       </div>
 
@@ -329,7 +332,10 @@ function SidebarChatItem({ conversation, onClick }: { conversation: Conversation
 
   return (
     <button
-      onClick={onClick}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
       className="w-full flex items-center gap-3 px-3 py-2.5 transition-colors group relative border-b border-transparent sidebar-item-hover"
     >
       <div className="absolute left-0 top-0 bottom-0 w-[4px] transition-opacity opacity-0 group-hover:opacity-100" style={{ backgroundColor: 'var(--accent)' }} />
@@ -408,7 +414,10 @@ function SidebarUserItem({
 
   return (
     <button
-      onClick={onClick}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
       className={`w-full flex items-center gap-3 px-3 py-2.5 transition-colors group relative border-b border-transparent ${isSelected ? 'bg-black/5' : 'sidebar-item-hover'}`}
     >
       <div className={`absolute left-0 top-0 bottom-0 w-[4px] transition-opacity ${isSelected || isSelectionMode ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} style={{ backgroundColor: 'var(--accent)' }} />
