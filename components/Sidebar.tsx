@@ -11,6 +11,7 @@ import { UserButton } from "@clerk/nextjs";
 import { format, isToday, isThisYear } from "date-fns";
 import { Settings, Moon, Sun, Palette } from "lucide-react";
 import { useTheme } from "./ThemeProvider";
+import { ThemeSwitcher } from "./ThemeSwitcher";
 import Image from "next/image";
 import { Doc } from "@/convex/_generated/dataModel";
 import { Conversation, PRESET_ICONS } from "./types";
@@ -262,42 +263,7 @@ export function Sidebar() {
       )}
 
       {showSettings && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-transparent animate-in fade-in duration-200" onClick={() => setShowSettings(false)}>
-          <div className="rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in duration-200 themed-bg" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold themed-text">Settings</h3>
-              <button onClick={() => setShowSettings(false)} className="p-2 hover:bg-black/5 rounded-full transition-colors">
-                <X className="h-5 w-5 themed-text-secondary" />
-              </button>
-            </div>
-
-            <div className="space-y-6">
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-wider mb-4" style={{ color: 'var(--accent)' }}>Appearance</p>
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { id: 'light', name: 'Light', icon: <Sun className="h-4 w-4" />, color: '#ffffff' },
-                    { id: 'dark', name: 'Dark', icon: <Moon className="h-4 w-4" />, color: '#17212b' },
-                    { id: 'whatsapp', name: 'WhatsApp', icon: <Palette className="h-4 w-4" />, color: '#25d366' },
-                  ].map((t) => (
-                    <button
-                      key={t.id}
-                      onClick={() => setTheme(t.id as "light" | "dark" | "whatsapp")}
-                      className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${theme === t.id ? 'bg-black/5' : 'border-black/5 hover:border-black/10'}`}
-                      style={{ borderColor: theme === t.id ? 'var(--accent)' : '' }}
-                    >
-                      <div className="h-8 w-8 rounded-full flex items-center justify-center mb-1" style={{ backgroundColor: t.color }}>
-                        <span className={t.id === 'white' ? 'text-black' : 'text-white'}>{t.icon}</span>
-                      </div>
-                      <span className="text-xs font-medium themed-text">{t.name}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-            </div>
-          </div>
-        </div>
+        <ThemeSwitcher isOpen={showSettings} onClose={() => setShowSettings(false)} />
       )}
 
       <div className="p-3 border-t flex items-center justify-between transition-colors duration-200 themed-border" style={{ backgroundColor: 'var(--bg-sidebar)' }}>
