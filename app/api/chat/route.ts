@@ -69,51 +69,81 @@ export async function POST(req: Request) {
     const primaryKey = process.env.GROQ_API_KEY!;
     const fallbackKey = process.env.GROQ_FALLBACK_API_KEY!;
 
-    console.log(`Active: [${activeKey}] | Primary: ${primaryKey?.slice(0, 15)}... | Fallback: ${fallbackKey?.slice(0, 15)}...`);
-
     const primaryGroq = createGroq({ apiKey: primaryKey });
     const fallbackGroq = createGroq({ apiKey: fallbackKey });
 
-    let activeGroq = activeKey === 'PRIMARY' ? primaryGroq : fallbackGroq;
-    let activeApiKey = activeKey === 'PRIMARY' ? primaryKey : fallbackKey;
+    const getActiveConfig = () => {
+      const isPrimary = activeKey === 'PRIMARY';
+      return {
+        groq: isPrimary ? primaryGroq : fallbackGroq,
+        apiKey: isPrimary ? primaryKey : fallbackKey,
+      };
+    };
 
-    const isValid = await validateKey(activeApiKey, messages);
+    let config = getActiveConfig();
+    console.log(`Active: [${activeKey}] | Primary: ${primaryKey?.slice(0, 15)}... | Fallback: ${fallbackKey?.slice(0, 15)}...`);
+
+    // 1. Preflight check
+    const isValid = await validateKey(config.apiKey, messages);
 
     if (!isValid) {
       const prev = activeKey;
       activeKey = activeKey === 'PRIMARY' ? 'FALLBACK' : 'PRIMARY';
       keyTimeout = Date.now() + TWENTY_FOUR_HOURS_MS;
-      console.warn(`[${prev}] exhausted! Switching to [${activeKey}] for 24hrs`);
-
-      activeGroq = activeKey === 'PRIMARY' ? primaryGroq : fallbackGroq;
-      activeApiKey = activeKey === 'PRIMARY' ? primaryKey : fallbackKey;
-
-      const isNewValid = await validateKey(activeApiKey, messages);
-      if (!isNewValid) {
-        console.warn(" Both accounts exhausted! Falling back to llama-3.1-8b-instant...");
-        const res8b = await streamText({
-          model: primaryGroq('llama-3.1-8b-instant'),
-          temperature: 0.6,
-          topP: 0.9,
-          frequencyPenalty: 1.2,
-          presencePenalty: 1.2,
-          system: SYSTEM_PROMPT,
-          messages,
-        });
-        return res8b.toTextStreamResponse();
-      }
+      console.warn(`[${prev}] exhausted during preflight! Switching to [${activeKey}]`);
+      config = getActiveConfig();
     }
 
-    const result = await streamText({
-      model: activeGroq('llama-3.3-70b-versatile'),
-      temperature: 0.6,
-      topP: 0.9,
-      frequencyPenalty: 1.2,
-      presencePenalty: 1.2,
-      system: SYSTEM_PROMPT,
-      messages,
-    });
-    return result.toTextStreamResponse();
+    // 2. Attempt stream with a retry for 429 errors
+    try {
+      const result = await streamText({
+        model: config.groq('llama-3.3-70b-versatile'),
+        temperature: 0.6,
+        topP: 0.9,
+        frequencyPenalty: 1.2,
+        presencePenalty: 1.2,
+        system: SYSTEM_PROMPT,
+        messages,
+      });
+      return result.toTextStreamResponse();
+    } catch (error: any) {
+      // If we hit a 429 during the actual stream initiation
+      if (error?.statusCode === 429 || error?.status === 429) {
+        const prev = activeKey;
+        activeKey = activeKey === 'PRIMARY' ? 'FALLBACK' : 'PRIMARY';
+        keyTimeout = Date.now() + TWENTY_FOUR_HOURS_MS;
+        console.warn(`[${prev}] exhausted during stream! Switching to [${activeKey}] and retrying...`);
+        
+        config = getActiveConfig();
+        
+        // Final attempt with the other key or fallback model
+        try {
+          const result = await streamText({
+            model: config.groq('llama-3.3-70b-versatile'),
+            temperature: 0.6,
+            topP: 0.9,
+            frequencyPenalty: 1.2,
+            presencePenalty: 1.2,
+            system: SYSTEM_PROMPT,
+            messages,
+          });
+          return result.toTextStreamResponse();
+        } catch (innerError) {
+          console.warn("Both accounts exhausted! Falling back to llama-3.1-8b-instant...");
+          const res8b = await streamText({
+            model: primaryGroq('llama-3.1-8b-instant'),
+            temperature: 0.6,
+            topP: 0.9,
+            frequencyPenalty: 1.2,
+            presencePenalty: 1.2,
+            system: SYSTEM_PROMPT,
+            messages,
+          });
+          return res8b.toTextStreamResponse();
+        }
+      }
+      throw error; // Re-throw if it's not a rate limit error
+    }
 
   } catch (error) {
     console.error("AI Bridge Error:", error);
