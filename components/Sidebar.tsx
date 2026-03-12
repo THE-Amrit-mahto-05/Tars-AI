@@ -158,6 +158,7 @@ export function Sidebar() {
                 user={user}
                 isSelected={selectedUsers.includes(user._id)}
                 isSelectionMode={true}
+                conversations={conversations}
                 onClick={() => handleUserClick(user)}
               />
             ))}
@@ -201,6 +202,7 @@ export function Sidebar() {
                 <SidebarUserItem
                   key={user._id}
                   user={user}
+                  conversations={conversations}
                   onClick={() => handleUserClick(user)}
                 />
               ))
@@ -398,13 +400,33 @@ function SidebarUserItem({
   user,
   onClick,
   isSelected,
-  isSelectionMode
+  isSelectionMode,
+  conversations
 }: {
   user: Doc<"users">;
   onClick: () => void;
   isSelected?: boolean;
   isSelectionMode?: boolean;
+  conversations?: Conversation[];
 }) {
+  // Find existing 1-on-1 conversation with this user
+  const existingConv = conversations?.find(
+    (c) => !c.isGroup && c.otherUser?._id === user._id
+  );
+
+  const formatMessageTimestamp = (ts: number) => {
+    const date = new Date(ts);
+    if (isToday(date)) return format(date, "h:mm a");
+    if (isThisYear(date)) return format(date, "MMM d, h:mm a");
+    return format(date, "MMM d, yyyy, h:mm a");
+  };
+
+  const lastMsgPreview = existingConv?.lastMessage
+    ? (existingConv.lastMessage.isSystem
+      ? `📢 ${existingConv.lastMessage.body}`
+      : cleanMarkdown(existingConv.lastMessage.body))
+    : null;
+
   return (
     <button
       onClick={onClick}
@@ -424,13 +446,30 @@ function SidebarUserItem({
       </div>
 
       <div className="flex-1 text-left overflow-hidden">
-        <p className="text-[15px] font-medium truncate flex items-center gap-1.5 themed-text">
-          {user.name}
-          {user.isAI && <Sparkles className="h-3 w-3" style={{ color: 'var(--accent)', fill: 'var(--accent)', opacity: 0.2 }} />}
-        </p>
-        <p className="text-[13.5px] truncate themed-text-secondary">
-          {isSelectionMode ? (isSelected ? "Selected" : "Click to select") : "Click to chat"}
-        </p>
+        <div className="flex justify-between items-baseline mb-0.5">
+          <p className="text-[15px] font-medium truncate flex items-center gap-1.5 themed-text">
+            {user.name}
+            {user.isAI && <Sparkles className="h-3 w-3" style={{ color: 'var(--accent)', fill: 'var(--accent)', opacity: 0.2 }} />}
+          </p>
+          {lastMsgPreview && existingConv?.lastMessage && (
+            <span className="text-[12px] transition-colors themed-text-secondary shrink-0 ml-1" suppressHydrationWarning>
+              {formatMessageTimestamp(existingConv.lastMessage._creationTime)}
+            </span>
+          )}
+        </div>
+        {isSelectionMode ? (
+          <p className="text-[13.5px] truncate themed-text-secondary">
+            {isSelected ? "Selected" : "Click to select"}
+          </p>
+        ) : existingConv?.typingUserName ? (
+          <p className="text-[13.5px] truncate font-medium animate-pulse" style={{ color: 'var(--accent)' }}>
+            typing...
+          </p>
+        ) : (
+          <p className="text-[13.5px] truncate themed-text-secondary">
+            {lastMsgPreview ?? "Click to chat"}
+          </p>
+        )}
       </div>
     </button>
   );
