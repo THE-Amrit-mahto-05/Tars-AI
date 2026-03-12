@@ -11,27 +11,30 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
+// Apply theme immediately to avoid flash — defaults to "light"
+function getInitialTheme(): Theme {
+    if (typeof window !== "undefined") {
+        const saved = localStorage.getItem("tars-chat-theme") as Theme;
+        if (saved === "dark" || saved === "whatsapp") return saved;
+    }
+    return "light";
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const [theme, setThemeState] = useState<Theme>("light");
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
-        const savedTheme = localStorage.getItem("tars-chat-theme") as Theme;
-        if (savedTheme) {
-            // Asynchronous state update to avoid Cascading renders warning
-            Promise.resolve().then(() => {
-                setThemeState(savedTheme);
-            });
-        }
-        // Asynchronous state update to avoid Cascading renders warning
-        Promise.resolve().then(() => {
-            setMounted(true);
-        });
+        const initial = getInitialTheme();
+        setThemeState(initial);
+        document.documentElement.setAttribute("data-theme", initial);
+        setMounted(true);
     }, []);
 
     const setTheme = (newTheme: Theme) => {
         setThemeState(newTheme);
         localStorage.setItem("tars-chat-theme", newTheme);
+        document.documentElement.setAttribute("data-theme", newTheme);
     };
 
     useEffect(() => {
