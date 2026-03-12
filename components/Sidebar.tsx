@@ -271,7 +271,7 @@ export function Sidebar() {
           <UserButton />
           <button
             onClick={() => setShowSettings(true)}
-            className="flex flex-col text-left hover:opacity-80 transition-opacity"
+            className="flex flex-col text-left hover:opacity-80 transition-opacity flex-1"
           >
             <p className="text-[13px] font-medium flex items-center gap-1.5 transition-colors themed-text">
               Settings <Settings className="h-3 w-3 opacity-50" />
@@ -279,6 +279,19 @@ export function Sidebar() {
             <p className="text-[11px] themed-text-secondary">Account & Privacy</p>
           </button>
         </div>
+        
+        {/* Theme Toggle Button */}
+        <button
+          onClick={() => setShowSettings(true)}
+          className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-all duration-300 transform hover:scale-110 group"
+          title="Change Theme"
+          style={{
+            backgroundColor: 'var(--bg-chat)',
+          }}
+        >
+          <Palette className="h-5 w-5 transition-all duration-300" style={{ color: 'var(--accent)' }} />
+          <div className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-20 transition-opacity" style={{ backgroundColor: 'var(--accent)' }} />
+        </button>
       </div>
 
 
