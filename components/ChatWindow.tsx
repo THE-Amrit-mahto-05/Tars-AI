@@ -132,16 +132,16 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
       // PRECISE TARGETING: Find the last message element to avoid scrolling into empty padding
       const container = containerRef.current;
       const lastMessageEl = container.lastElementChild as HTMLElement;
-      
+
       let targetScrollTop = container.scrollHeight;
-      
+
       if (lastMessageEl) {
         // Calculate the exact bottom edge of the last message
         const messageBottom = lastMessageEl.offsetTop + lastMessageEl.offsetHeight;
         // Subtract the viewport height to align the bottom of the message exactly with the bottom of the screen
         // We do NOT add a buffer here, so it stops EXACTLY when the text is fully visible (no extra space below).
-        targetScrollTop = messageBottom - container.clientHeight; 
-        
+        targetScrollTop = messageBottom - container.clientHeight;
+
         // Ensure we don't scroll to a negative value
         targetScrollTop = Math.max(0, targetScrollTop);
       }
@@ -218,12 +218,12 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
     if ((isAiGenerating || streamingAIText || aiJustFinished) && isAtBottom.current && !showScrollButton) {
       const { scrollTop, clientHeight } = container;
       const lastMessageEl = container.lastElementChild as HTMLElement;
-      
+
       if (lastMessageEl) {
         const messageBottom = lastMessageEl.offsetTop + lastMessageEl.offsetHeight;
         // The message is overflowing if its bottom edge is below the current visible viewport
         const isOverflowing = messageBottom > scrollTop + clientHeight;
-        
+
         if (isOverflowing) {
           const now = Date.now();
           if (now - lastScrollTimeRef.current > 300) {
@@ -239,7 +239,7 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
     const distanceToBottom = scrollHeight - scrollTop - clientHeight;
-    
+
     // Threshold for showing the "New messages" button
     setShowScrollButton(distanceToBottom > 300);
 
@@ -327,7 +327,7 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
           if (aiText) {
             await sendAI({ body: aiText, conversationId });
           }
-          
+
           // Clear up
           clearInterval(displayLoop);
           setIsAiGenerating(false);
@@ -510,100 +510,100 @@ export function ChatWindow({ conversationId }: { conversationId: Id<"conversatio
           onScroll={handleScroll}
           className="flex-1 overflow-y-auto z-10 custom-scrollbar pb-4"
         >
-        <div className="max-w-[1000px] mx-auto p-4 md:p-8 space-y-2">
-          {displayMessages?.length === 0 && !isAiGenerating && (
-            <div className="flex flex-col items-center justify-center py-20 opacity-40">
-              <div className="p-6 rounded-full shadow-sm mb-4 themed-bg">
-                <Sparkles className="h-12 w-12" style={{ color: 'var(--accent)' }} />
-              </div>
-              <p className="text-lg font-medium themed-text">No messages yet</p>
-              <p className="text-sm themed-text-secondary">Send a message to start the conversation!</p>
-            </div>
-          )}
-          {displayMessages?.map((msg, index: number) => {
-            const prevMsg = displayMessages[index - 1];
-            return (
-              <MessageItem
-                key={msg._id}
-                msg={msg}
-                prevMsg={prevMsg}
-                me={me}
-                details={displayDetails!}
-                toggleReaction={toggleReaction}
-                handleCopy={handleCopy}
-                copiedId={copiedId}
-                removeMessage={removeMessage}
-              />
-            );
-          })}
-
-
-          {isAiGenerating && displayMessages?.[displayMessages.length - 1]?.body?.trim() !== streamingAIText.trim() && (
-            <div className="flex w-full justify-start mt-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <div className="flex gap-3 items-end max-w-[85%] sm:max-w-[70%]">
-                <div className="relative shrink-0 rounded-full overflow-hidden">
-                  <Image src={aiMember?.image ?? "https://cdn-icons-png.flaticon.com/512/166/166258.png"} width={32} height={32} unoptimized className="h-8 w-8 rounded-full border themed-border" alt="AI Agent" />
+          <div className="max-w-[1000px] mx-auto p-4 md:p-8 space-y-2">
+            {displayMessages?.length === 0 && !isAiGenerating && (
+              <div className="flex flex-col items-center justify-center py-20 opacity-40">
+                <div className="p-6 rounded-full shadow-sm mb-4 themed-bg">
+                  <Sparkles className="h-12 w-12" style={{ color: 'var(--accent)' }} />
                 </div>
-                <div className="rounded-2xl rounded-tl-sm border themed-border px-4 py-2.5 shadow-sm themed-bg message-bubble-other"
-                  style={{
-                    backgroundColor: 'var(--bubble-other)',
-                    color: 'var(--bubble-other-text)',
-                  }}
-                >
-                  {streamingAIText ? (
-                    <div className="text-[15px] leading-relaxed break-words pr-10 markdown-content themed-text">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {streamingAIText}
-                      </ReactMarkdown>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <div className="flex gap-1">
-                        <div className="w-2 h-2 rounded-full animate-bounce [animation-delay:-0.3s]" style={{ backgroundColor: 'var(--accent)' }} />
-                        <div className="w-2 h-2 rounded-full animate-bounce [animation-delay:-0.15s]" style={{ backgroundColor: 'var(--accent)' }} />
-                        <div className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: 'var(--accent)' }} />
+                <p className="text-lg font-medium themed-text">No messages yet</p>
+                <p className="text-sm themed-text-secondary">Send a message to start the conversation!</p>
+              </div>
+            )}
+            {displayMessages?.map((msg, index: number) => {
+              const prevMsg = displayMessages[index - 1];
+              return (
+                <MessageItem
+                  key={msg._id}
+                  msg={msg}
+                  prevMsg={prevMsg}
+                  me={me}
+                  details={displayDetails!}
+                  toggleReaction={toggleReaction}
+                  handleCopy={handleCopy}
+                  copiedId={copiedId}
+                  removeMessage={removeMessage}
+                />
+              );
+            })}
+
+
+            {isAiGenerating && displayMessages?.[displayMessages.length - 1]?.body?.trim() !== streamingAIText.trim() && (
+              <div className="flex w-full justify-start mt-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="flex gap-3 items-end max-w-[85%] sm:max-w-[70%]">
+                  <div className="relative shrink-0 rounded-full overflow-hidden">
+                    <Image src={aiMember?.image ?? "https://cdn-icons-png.flaticon.com/512/166/166258.png"} width={32} height={32} unoptimized className="h-8 w-8 rounded-full border themed-border" alt="AI Agent" />
+                  </div>
+                  <div className="rounded-2xl rounded-tl-sm border themed-border px-4 py-2.5 shadow-sm themed-bg message-bubble-other"
+                    style={{
+                      backgroundColor: 'var(--bubble-other)',
+                      color: 'var(--bubble-other-text)',
+                    }}
+                  >
+                    {streamingAIText ? (
+                      <div className="text-[15px] leading-relaxed break-words pr-10 markdown-content themed-text">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {streamingAIText}
+                        </ReactMarkdown>
                       </div>
-                      <span className="text-[13px] font-medium ml-2 themed-text-secondary">Tars is thinking...</span>
-                    </div>
-                  )}
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <div className="flex gap-1">
+                          <div className="w-2 h-2 rounded-full animate-bounce [animation-delay:-0.3s]" style={{ backgroundColor: 'var(--accent)' }} />
+                          <div className="w-2 h-2 rounded-full animate-bounce [animation-delay:-0.15s]" style={{ backgroundColor: 'var(--accent)' }} />
+                          <div className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: 'var(--accent)' }} />
+                        </div>
+                        <span className="text-[13px] font-medium ml-2 themed-text-secondary">Tars is thinking...</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {displayDetails?.conversation?.typingUser && displayDetails.conversation.typingUser !== me?._id && !isAiGenerating && (
-            <div className="flex w-full justify-start mt-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <div className="flex gap-3 items-end max-w-[85%] sm:max-w-[70%]">
-                <div className="relative shrink-0 rounded-full overflow-hidden">
-                  <Image
-                    src={displayDetails.conversation.typingUserImage || "https://cdn-icons-png.flaticon.com/512/166/166258.png"}
-                    width={32}
-                    height={32}
-                    unoptimized
-                    className="h-8 w-8 rounded-full border themed-border"
-                    alt="Typing User"
-                  />
-                </div>
-                <div className="rounded-2xl rounded-tl-sm border themed-border px-4 py-2.5 shadow-sm themed-bg message-bubble-other"
-                  style={{
-                    backgroundColor: 'var(--bubble-other)',
-                    color: 'var(--bubble-other-text)',
-                  }}
-                >
-                  <div className="flex items-center gap-2 h-6">
-                    <div className="flex gap-1.5 items-center">
-                      <div className="w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:-0.3s] opacity-60" style={{ backgroundColor: 'var(--bubble-other-text)' }} />
-                      <div className="w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:-0.15s] opacity-60" style={{ backgroundColor: 'var(--bubble-other-text)' }} />
-                      <div className="w-1.5 h-1.5 rounded-full animate-bounce opacity-60" style={{ backgroundColor: 'var(--bubble-other-text)' }} />
+            {displayDetails?.conversation?.typingUser && displayDetails.conversation.typingUser !== me?._id && !isAiGenerating && (
+              <div className="flex w-full justify-start mt-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="flex gap-3 items-end max-w-[85%] sm:max-w-[70%]">
+                  <div className="relative shrink-0 rounded-full overflow-hidden">
+                    <Image
+                      src={displayDetails.conversation.typingUserImage || "https://cdn-icons-png.flaticon.com/512/166/166258.png"}
+                      width={32}
+                      height={32}
+                      unoptimized
+                      className="h-8 w-8 rounded-full border themed-border"
+                      alt="Typing User"
+                    />
+                  </div>
+                  <div className="rounded-2xl rounded-tl-sm border themed-border px-4 py-2.5 shadow-sm themed-bg message-bubble-other"
+                    style={{
+                      backgroundColor: 'var(--bubble-other)',
+                      color: 'var(--bubble-other-text)',
+                    }}
+                  >
+                    <div className="flex items-center gap-2 h-6">
+                      <div className="flex gap-1.5 items-center">
+                        <div className="w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:-0.3s] opacity-60" style={{ backgroundColor: 'var(--bubble-other-text)' }} />
+                        <div className="w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:-0.15s] opacity-60" style={{ backgroundColor: 'var(--bubble-other-text)' }} />
+                        <div className="w-1.5 h-1.5 rounded-full animate-bounce opacity-60" style={{ backgroundColor: 'var(--bubble-other-text)' }} />
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          <div ref={scrollRef} />
-        </div>
+            <div ref={scrollRef} />
+          </div>
 
         </div>
 
